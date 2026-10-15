@@ -193,12 +193,17 @@ const runLabel =
 
   type Expr = any;
   interface Stmt {
-    kind: "assign" | "expr" | "if";
+    kind: "assign" | "expr" | "if" | "while" | "for" | "def" | "return";
     lineNo: number;
     name?: string;
     expr?: Expr;
     clauses?: { cond: Expr; body: Stmt[] }[];
     orelse?: Stmt[];
+    cond?: Expr;
+    body?: Stmt[];
+    var?: string;
+    iter?: Expr;
+    params?: string[];
   }
 
   function parseProgram(src: string): Stmt[] {
@@ -214,6 +219,23 @@ const runLabel =
     if (lines.length === 0) return [];
     const [stmts] = parseBlock(lines, 0, lines[0]!.indent);
     return stmts;
+  }
+
+  function finishCondLine(
+    parser: ExprParser,
+    ln: { toks: Tok[]; lineNo: number },
+    keyword: string,
+  ): void {
+    const ctok = parser.cur();
+    if (!ctok || ctok.t !== "op" || ctok.v !== ":")
+      throw new PyError(
+        "SyntaxError",
+        `expected ':' at the end of the ${keyword} line`,
+        ln.lineNo,
+      );
+    parser.pos++;
+    if (!parser.done())
+      throw new PyError("SyntaxError", "invalid syntax", ln.lineNo);
   }
 
   function parseBlock(
@@ -232,12 +254,83 @@ const runLabel =
         i = result.next;
         continue;
       }
-      if (first.t === "name" && (first.v === "while" || first.v === "for")) {
-        throw new PyError(
-          "SimNote",
-          `${first.v} loops arrive in Week 4 — this simulator covers Week 3: variables, strings, f-strings, if/elif/else`,
-          ln.lineNo,
-        );
+      if (first.t === "name" && first.v === "while") {
+        const parser = new ExprParser(ln.toks.slice(1), ln.lineNo, true);
+        const cond = parser.parseOr();
+        finishCondLine(parser, ln, "while");
+        const body = childBlock(lines, i + 1, indent, ln.lineNo);
+        stmts.push({ kind: "while", lineNo: ln.lineNo, cond, body: body.stmts });
+        i = body.next;
+        continue;
+      }
+      if (first.t === "name" && first.v === "for") {
+        const varTok = ln.toks[1];
+        const inTok = ln.toks[2];
+        if (!varTok || varTok.t !== "name" || !inTok || inTok.t !== "name" || inTok.v !== "in")
+          throw new PyError(
+            "SyntaxError",
+            "expected: for variable in something:",
+            ln.lineNo,
+          );
+        const parser = new ExprParser(ln.toks.slice(3), ln.lineNo, true);
+        const iter = parser.parseOr();
+        finishCondLine(parser, ln, "for");
+        const body = childBlock(lines, i + 1, indent, ln.lineNo);
+        stmts.push({
+          kind: "for",
+          lineNo: ln.lineNo,
+          var: varTok.v,
+          iter,
+          body: body.stmts,
+        });
+        i = body.next;
+        continue;
+      }
+      if (first.t === "name" && first.v === "def") {
+        const nameTok = ln.toks[1];
+        if (!nameTok || nameTok.t !== "name")
+          throw new PyError("SyntaxError", "expected: def name(parameters):", ln.lineNo);
+        if (ln.toks[2]?.t !== "op" || ln.toks[2].v !== "(")
+          throw new PyError("SyntaxError", `expected '(' after ${nameTok.v}`, ln.lineNo);
+        let j = 3;
+        const params: string[] = [];
+        while (ln.toks[j] && !(ln.toks[j].t === "op" && ln.toks[j].v === ")")) {
+          const p = ln.toks[j]!;
+          if (p.t === "name") params.push(p.v);
+          else if (!(p.t === "op" && p.v === ","))
+            throw new PyError("SyntaxError", "parameter names only, separated by commas", ln.lineNo);
+          j++;
+        }
+        if (!ln.toks[j] || ln.toks[j]!.v !== ")")
+          throw new PyError("SyntaxError", `expected ')' to close ${nameTok.v}(`, ln.lineNo);
+        if (ln.toks[j + 1]?.t !== "op" || ln.toks[j + 1]!.v !== ":")
+          throw new PyError(
+            "SyntaxError",
+            `expected ':' at the end of the def ${nameTok.v} line`,
+            ln.lineNo,
+          );
+        if (ln.toks.length > j + 2)
+          throw new PyError("SyntaxError", "invalid syntax", ln.lineNo);
+        const body = childBlock(lines, i + 1, indent, ln.lineNo);
+        stmts.push({
+          kind: "def",
+          lineNo: ln.lineNo,
+          name: nameTok.v,
+          params,
+          body: body.stmts,
+        });
+        i = body.next;
+        continue;
+      }
+      if (first.t === "name" && first.v === "return") {
+        const rest = ln.toks.slice(1);
+        stmts.push({
+          kind: "return",
+          lineNo: ln.lineNo,
+          expr: rest.length ? parseExprTokens(rest, ln.lineNo, false) : null,
+        });
+        i++;
+        continue;
       }
       stmts.push(parseSimple(ln));
       i++;
@@ -316,6 +409,26 @@ const runLabel =
         lineNo: ln.lineNo,
         name: toks[0].v,
         expr: parseExprTokens(toks.slice(2), ln.lineNo, false),
+      };
+    }
+    // augmented assignment: x += 1, x -= 1, x *= 2, x /= 2
+    if (
+      toks[0]?.t === "name" &&
+      toks[1]?.t === "op" &&
+      ["+", "-", "*", "/"].includes(toks[1].v) &&
+      toks[2]?.t === "op" &&
+      toks[2].v === "="
+    ) {
+      return {
+        kind: "assign",
+        lineNo: ln.lineNo,
+        name: toks[0].v,
+        expr: {
+          k: "bin",
+          op: toks[1].v,
+          left: { k: "name", v: toks[0].v },
+          right: parseExprTokens(toks.slice(3), ln.lineNo, false),
+        },
       };
     }
     return { kind: "expr", lineNo: ln.lineNo, expr: parseExprTokens(toks, ln.lineNo, false) };
@@ -502,19 +615,39 @@ const runLabel =
         this.eat(")");
         return e;
       }
+      if (c.t === "op" && c.v === "[") {
+        this.pos++;
+        const items: Expr[] = [];
+        while (!this.isOp("]")) {
+          items.push(this.parseOr());
+          if (this.isOp(",")) this.pos++;
+          else break;
+        }
+        this.eat("]");
+        return { k: "list", items };
+      }
       throw new PyError("SyntaxError", "invalid syntax", this.lineNo);
     }
   }
 
   /* ---------- evaluation ---------- */
 
-  type Val = number | string | boolean | null;
+  type Val = number | string | boolean | null | any[] | { __func: any; __name?: string };
+
+  let runPrinted: string[] = [];
+
+  function pyRepr(v: Val): string {
+    if (typeof v === "string") return `'${v}'`;
+    return pyStr(v);
+  }
 
   function pyStr(v: Val): string {
     if (typeof v === "boolean") return v ? "True" : "False";
     if (v === null) return "None";
     if (typeof v === "number") return String(v);
-    return v;
+    if (Array.isArray(v)) return `[${v.map((x) => pyRepr(x as Val)).join(", ")}]`;
+    if (typeof v === "object" && "__func" in v) return `<function ${(v as any).__name}>`;
+    return String(v);
   }
 
   function pyTruth(v: Val): boolean {
@@ -522,6 +655,7 @@ const runLabel =
     if (v === true) return true;
     if (typeof v === "number") return v !== 0;
     if (typeof v === "string") return v.length > 0;
+    if (Array.isArray(v)) return v.length > 0;
     return true;
   }
 
@@ -530,10 +664,24 @@ const runLabel =
     if (v === null) return "NoneType";
     if (typeof v === "number")
       return Number.isInteger(v) ? "int" : "float";
+    if (Array.isArray(v)) return "list";
+    if (typeof v === "object" && "__func" in v) return "function";
     return "str";
   }
 
   function applyMethod(obj: Val, name: string, args: Val[]): Val {
+    if (Array.isArray(obj)) {
+      if (name === "append") {
+        if (args.length !== 1)
+          throw new PyError("TypeError", "append() takes exactly one argument");
+        obj.push(args[0]!);
+        return null;
+      }
+      throw new PyError(
+        "AttributeError",
+        `this simulator supports .append() on lists — '${name}' comes later`,
+      );
+    }
     if (typeof obj !== "string")
       throw new PyError(
         "AttributeError",
@@ -576,6 +724,9 @@ const runLabel =
         if (!(e.v in env))
           throw new PyError("NameError", `name '${e.v}' is not defined`);
         return env[e.v]!;
+      }
+      case "list": {
+        return e.items.map((it: Expr) => evalExpr(it, env, flags));
       }
       case "neg": {
         const v = evalExpr(e.operand, env, flags);
@@ -622,6 +773,7 @@ const runLabel =
         if (e.op === "+") {
           if (typeof l === "number" && typeof r === "number") return l + r;
           if (typeof l === "string" && typeof r === "string") return l + r;
+          if (Array.isArray(l) && Array.isArray(r)) return [...l, ...r];
           if (typeof l === "string")
             throw new PyError(
               "TypeError",
@@ -730,7 +882,19 @@ const runLabel =
         const fname = e.func.k === "name" ? e.func.v : null;
         const args = e.args.map((a: Expr) => evalExpr(a, env, flags));
         if (fname === "print") {
-          throw { __print: args.map((a: Val) => pyStr(a)).join(" ") };
+          runPrinted.push(args.map((a: Val) => pyStr(a)).join(" "));
+          return null;
+        }
+        if (fname === "range") {
+          if (args.length < 1 || args.length > 3)
+            throw new PyError("TypeError", "range() takes 1 to 3 arguments");
+          if (!args.every((a: Val) => typeof a === "number" && Number.isInteger(a)))
+            throw new PyError("TypeError", "range() needs integers");
+          const a = args.length === 1 ? 0 : (args[0] as number);
+          const b = args.length === 1 ? (args[0] as number) : (args[1] as number);
+          const step = args.length === 3 ? (args[2] as number) : 1;
+          if (step === 0) throw new PyError("ValueError", "range() arg 3 must not be zero");
+          return { __range: { a, b, step } } as any;
         }
         if (fname === "int") {
           const a = args[0] as Val;
@@ -760,6 +924,7 @@ const runLabel =
         if (fname === "len") {
           const a = args[0] as Val;
           if (typeof a === "string") return a.length;
+          if (Array.isArray(a)) return a.length;
           throw new PyError("TypeError", `object of type '${typeName(a)}' has no len()`);
         }
         if (fname === "round") {
@@ -780,11 +945,34 @@ const runLabel =
             "input() needs a human — in this simulator, assign values directly (rate = 150.0)",
           );
         }
-        if (fname !== null && fname in env && typeof env[fname] === "string") {
-          throw new PyError(
-            "TypeError",
-            `'${fname}' is a variable, not a function — did you mean print(${fname})?`,
-          );
+        // user-defined functions
+        if (fname !== null && fname in env) {
+          const f = env[fname] as any;
+          if (f && typeof f === "object" && "__func" in f) {
+            const expected = f.__func.params.length;
+            if (args.length !== expected)
+              throw new PyError(
+                "TypeError",
+                `${fname}() takes exactly ${expected} argument${expected === 1 ? "" : "s"} (${args.length} given)`,
+              );
+            const localEnv = Object.create(env) as Record<string, Val>;
+            f.__func.params.forEach((p: string, idx: number) => {
+              localEnv[p] = args[idx]!;
+            });
+            try {
+              runStmts(f.__func.body, localEnv, flags);
+            } catch (err: any) {
+              if (err && err.__return !== undefined) return err.__return;
+              throw err;
+            }
+            return null;
+          }
+          if (typeof f === "string" || typeof f === "number") {
+            throw new PyError(
+              "TypeError",
+              `'${fname}' is a variable, not a function — did you mean print(${fname})?`,
+            );
+          }
         }
         throw new PyError("NameError", `name '${fname ?? "expression"}' is not defined`);
       }
@@ -801,17 +989,26 @@ const runLabel =
             throw new PyError("IndexError", "string index out of range");
           return obj[i2]!;
         }
-        throw new PyError("TypeError", "only strings can be indexed in this simulator");
+        if (Array.isArray(obj) && typeof idx === "number" && Number.isInteger(idx)) {
+          const i2 = idx < 0 ? obj.length + idx : idx;
+          if (i2 < 0 || i2 >= obj.length)
+            throw new PyError("IndexError", "list index out of range");
+          return obj[i2] as Val;
+        }
+        throw new PyError("TypeError", "only strings and lists can be indexed in this simulator");
       }
       case "slice": {
         const obj = evalExpr(e.obj, env, flags);
-        if (typeof obj !== "string")
-          throw new PyError("TypeError", "only strings can be sliced in this simulator");
+        const items = typeof obj === "string" ? obj.split("") : obj;
+        if (!Array.isArray(items) && typeof items !== "string")
+          throw new PyError("TypeError", "only strings and lists can be sliced in this simulator");
+        const n = items.length;
         const lo = e.lo ? (evalExpr(e.lo, env, flags) as number) : 0;
-        const hi = e.hi ? (evalExpr(e.hi, env, flags) as number) : obj.length;
-        const lo2 = lo < 0 ? obj.length + lo : lo;
-        const hi2 = hi < 0 ? obj.length + hi : hi;
-        return obj.slice(Math.max(0, lo2), Math.max(0, hi2));
+        const hi = e.hi ? (evalExpr(e.hi, env, flags) as number) : n;
+        const lo2 = lo < 0 ? n + lo : lo;
+        const hi2 = hi < 0 ? n + hi : hi;
+        const part = items.slice(Math.max(0, lo2), Math.max(0, hi2));
+        return typeof obj === "string" ? (part as string[]).join("") : (part as Val[]);
       }
     }
     throw new PyError("SyntaxError", "invalid syntax");
@@ -820,42 +1017,84 @@ const runLabel =
   /* values ever assigned to each variable, across all runs — lets missions
      pass even when the program later changes a variable (like yen) */
   let envSeen: Record<string, Set<string>> = {};
+  let loopBudget = 10000;
 
-  function exec(stmts: Stmt[], env: Record<string, Val>, flags: Set<string>, printed: string[]): void {
-    const runStmt = (list: Stmt[]) => {
-      for (const st of list) {
-        let res;
-        if (st.kind === "assign") {
-          const v = evalExpr(st.expr!, env, flags);
-          env[st.name!] = v;
-          (envSeen[st.name!] ??= new Set()).add(pyStr(v));
-          continue;
-        }
-        if (st.kind === "if") {
-          for (const cl of st.clauses!) {
-            if (pyTruth(evalExpr(cl.cond, env, flags))) {
-              flags.add("if");
-              runStmt(cl.body);
-              res = true;
-              break;
-            }
-          }
-          if (!res && st.orelse) {
-            flags.add("if");
-            runStmt(st.orelse);
-          }
-          continue;
-        }
-        // expr statement
-        try {
-          evalExpr(st.expr!, env, flags);
-        } catch (err: any) {
-          if (err && err.__print !== undefined) printed.push(err.__print);
-          else throw err;
-        }
+  function runStmts(stmts: Stmt[], env: Record<string, Val>, flags: Set<string>): void {
+    for (const st of stmts) {
+      let res;
+      if (st.kind === "assign") {
+        const v = evalExpr(st.expr!, env, flags);
+        env[st.name!] = v;
+        (envSeen[st.name!] ??= new Set()).add(pyStr(v));
+        continue;
       }
-    };
-    runStmt(stmts);
+      if (st.kind === "if") {
+        for (const cl of st.clauses!) {
+          if (pyTruth(evalExpr(cl.cond, env, flags))) {
+            flags.add("if");
+            runStmts(cl.body, env, flags);
+            res = true;
+            break;
+          }
+        }
+        if (!res && st.orelse) {
+          flags.add("if");
+          runStmts(st.orelse, env, flags);
+        }
+        continue;
+      }
+      if (st.kind === "while") {
+        flags.add("while");
+        for (;;) {
+          if (loopBudget <= 0)
+            throw new PyError(
+              "SimNote",
+              "this loop ran 10000 times — it looks infinite. In a while loop, something inside must change the condition (e.g. i = i + 1)",
+              st.lineNo,
+            );
+          if (!pyTruth(evalExpr(st.cond!, env, flags))) break;
+          loopBudget--;
+          runStmts(st.body!, env, flags);
+        }
+        continue;
+      }
+      if (st.kind === "for") {
+        flags.add("for");
+        const it = evalExpr(st.iter!, env, flags);
+        let values: Val[] = [];
+        if (it !== null && typeof it === "object" && "__range" in (it as object)) {
+          const r = (it as any).__range;
+          for (let n = r.a; r.step > 0 ? n < r.b : n > r.b; n += r.step) values.push(n);
+        } else if (typeof it === "string") {
+          values = it.split("");
+        } else if (Array.isArray(it)) {
+          values = [...it];
+        } else {
+          throw new PyError("TypeError", `'${typeName(it)}' object is not iterable`, st.lineNo);
+        }
+        for (const v of values) {
+          if (loopBudget-- <= 0)
+            throw new PyError(
+              "SimNote",
+              "this loop ran 10000 times — it looks infinite",
+              st.lineNo,
+            );
+          env[st.var!] = v;
+          (envSeen[st.var!] ??= new Set()).add(pyStr(v));
+          runStmts(st.body!, env, flags);
+        }
+        continue;
+      }
+      if (st.kind === "def") {
+        env[st.name!] = { __func: { params: st.params, body: st.body }, __name: st.name } as any;
+        continue;
+      }
+      if (st.kind === "return") {
+        throw { __return: st.expr ? evalExpr(st.expr, env, flags) : null };
+      }
+      // expr statement
+      evalExpr(st.expr!, env, flags);
+    }
   }
 
   /* ================= missions + UI ================= */
@@ -864,6 +1103,11 @@ const runLabel =
   let codeFlags = new Set<string>();
   let lastOutput: string[] = [];
   let allDoneShown = false;
+
+  function isFunc(name: string): boolean {
+    const v = env[name];
+    return !!v && typeof v === "object" && "__func" in v;
+  }
 
   const CHECKS: Record<string, () => boolean> = {
     p1: () => !!envSeen.rate?.has("150"),
@@ -880,6 +1124,37 @@ const runLabel =
       codeFlags.has("if") &&
       !lastOutput.some((l) => /-3\.3/.test(l)),
     p8: () => lastOutput.some((l) => l === "mountain shadow"),
+    /* week 4: loops and functions */
+    l1: () =>
+      Array.isArray(env.volumes) &&
+      env.volumes.length === 7 &&
+      env.volumes.every((v) => typeof v === "number"),
+    l2: () =>
+      codeFlags.has("for") &&
+      [1000, 2000, 3000, 4000, 5000, 6000, 7000].every((v) =>
+        lastOutput.some((l) => l.includes(String(v))),
+      ),
+    l3: () =>
+      isFunc("total") &&
+      lastOutput.some((l) => l.includes("28000")),
+    l4: () =>
+      isFunc("average") &&
+      lastOutput.some((l) => l.includes("4000")),
+    l5: () =>
+      isFunc("best_day") &&
+      lastOutput.some((l) => l.includes("best day: 7")),
+    l6: () =>
+      codeFlags.has("while") &&
+      lastOutput.some((l) => l.includes("day 1")) &&
+      lastOutput.some((l) => l.includes("day 7")),
+    l7: () =>
+      isFunc("yen_to_usd") &&
+      lastOutput.some((l) => l.includes("USD") && /200/.test(l)),
+    l8: () =>
+      isFunc("report") &&
+      lastOutput.some((l) => l.includes("total: 28000")) &&
+      lastOutput.some((l) => l.includes("average: 4000")) &&
+      lastOutput.some((l) => l.includes("best day: 7")),
   };
 
   function print(text: string, cls?: string): void {
@@ -916,16 +1191,19 @@ const runLabel =
     print("▶ run", "term-cmd");
     env = {};
     codeFlags = new Set();
-    const printed: string[] = [];
+    runPrinted = [];
+    loopBudget = 10000;
     let pyError: PyError | { message: string } | null = null;
     try {
       const stmts = parseProgram(codeArea.value);
-      exec(stmts, env, codeFlags, printed);
+      runStmts(stmts, env, codeFlags);
     } catch (err: any) {
-      if (err instanceof PyError) pyError = err;
+      if (err && err.__return !== undefined)
+        pyError = new PyError("SyntaxError", "'return' outside function");
+      else if (err instanceof PyError) pyError = err;
       else pyError = { message: err?.message ?? "invalid syntax" };
     }
-    printed.forEach((l) => print(l));
+    runPrinted.forEach((l) => print(l));
     if (pyError) {
       const e = pyError as PyError;
       if (e instanceof PyError) {
@@ -939,10 +1217,10 @@ const runLabel =
       } else {
         print(`SyntaxError: ${e.message}`, "term-err");
       }
-    } else if (printed.length === 0) {
+    } else if (runPrinted.length === 0) {
       print("(no output — use print() to show something)", "term-info");
     }
-    lastOutput = printed;
+    lastOutput = runPrinted;
     afterRun();
   }
 

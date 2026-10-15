@@ -166,6 +166,7 @@ export const curriculumEn: Curriculum = {
       title: "Python II: loops and functions",
       phase: "python",
       why: "Programs become powerful when they repeat work without you and when logic is packaged into named, reusable functions. This is also where you learn to read error messages — a skill you'll use daily.",
+      guide: "python-loops",
       objectives: [
         "Repeat work with for loops and while loops.",
         "Write functions with parameters and return values.",

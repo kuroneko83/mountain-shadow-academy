@@ -7,7 +7,7 @@ Free 12-week study path — Python, scripting, and data engineering from absolut
 ## What it is
 
 - 4 phases, 12 weeks, one applied project per week (~4–6 h/week, evening pace)
-- **Deep-dive guides** (`/guides/`) with plain-language lessons, Windows/Linux examples, a **simulated terminal** with auto-checked missions, and a **quiz** — currently: *The command line* (Week 1), *Git & GitHub* (Week 2, with a fake git: init/status/add/commit/log/remote/push), and *Python I* (Week 3, with a mini-Python interpreter in the browser: variables, numbers, strings, f-strings, if/elif/else). Each guide is labeled with the week it serves; more guides to come.
+- **Deep-dive guides** (`/guides/`) with plain-language lessons, Windows/Linux examples, a **simulated terminal** with auto-checked missions, and a **quiz** — currently: *The command line* (Week 1), *Git & GitHub* (Week 2, with a fake git: init/status/add/commit/log/remote/push), *Python I* (Week 3) and *Python II* (Week 4, loops & functions) — the last two with a mini-Python interpreter in the browser: variables, strings, f-strings, if/elif/else, for/while, range(), lists, def/return. Each guide is labeled with the week it serves; more guides to come.
 - 100% free learning resources (freeCodeCamp, Kaggle Learn, SQLBolt, Automate the Boring Stuff, Pro Git, Frankfurter API, ...)
 - Final outcome: a public GitHub portfolio with 4+ repos and a deployed market-data pipeline report
 

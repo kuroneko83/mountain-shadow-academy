@@ -167,6 +167,7 @@ export const curriculumJa: Curriculum = {
       title: "Python II：ループと関数",
       phase: "python",
       why: "プログラムが強力になるのは、あなたの代わりに仕事を繰り返し、ロジックを名前付きの再利用可能な関数にまとめられるときです。また、エラーメッセージを読む練習もここでします — 毎日使うスキルです。",
+      guide: "python-loops",
       objectives: [
         "forループとwhileループで処理を繰り返せる。",
         "引数と戻り値を持つ関数を書ける。",

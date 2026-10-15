@@ -7,13 +7,16 @@ import { guideGitUz } from "./git.uz";
 import { guidePythonEn } from "./python-basics.en";
 import { guidePythonJa } from "./python-basics.ja";
 import { guidePythonUz } from "./python-basics.uz";
+import { guideLoopsEn } from "./python-loops.en";
+import { guideLoopsJa } from "./python-loops.ja";
+import { guideLoopsUz } from "./python-loops.uz";
 import type { Guide } from "../types";
 import type { Lang } from "../types";
 
 const GUIDES: Record<Lang, Guide[]> = {
-  en: [guideCommandLineEn, guideGitEn, guidePythonEn],
-  ja: [guideCommandLineJa, guideGitJa, guidePythonJa],
-  uz: [guideCommandLineUz, guideGitUz, guidePythonUz],
+  en: [guideCommandLineEn, guideGitEn, guidePythonEn, guideLoopsEn],
+  ja: [guideCommandLineJa, guideGitJa, guidePythonJa, guideLoopsJa],
+  uz: [guideCommandLineUz, guideGitUz, guidePythonUz, guideLoopsUz],
 };
 
 export function getGuides(lang: Lang): Guide[] {

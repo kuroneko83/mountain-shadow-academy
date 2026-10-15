@@ -167,6 +167,7 @@ export const curriculumUz: Curriculum = {
       title: "Python II: tsikllar va funksiyalar",
       phase: "python",
       why: "Dasturlar kuchli boʻladi, qachonki ishni sizsiz takrorlasa va logikani nomlangan, qayta ishlatiladigan funksiyalarga joylasa. Shu yerda xato xabarlarini oʻqishni ham oʻrganasiz — bu kunilik koʻnikma.",
+      guide: "python-loops",
       objectives: [
         "for va while tsikllari bilan ishni takrorlash.",
         "Parametr va qiymat qaytaradigan funksiyalar yozish.",

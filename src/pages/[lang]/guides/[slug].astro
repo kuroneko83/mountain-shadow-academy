@@ -25,6 +25,7 @@ if (!guide) {
 }
 
 const sim = guide.slug === "git" ? "git" : "command-line";
+const usesPythonSim = guide.slug === "python-basics" || guide.slug === "python-loops";
 const servedWeek = guide.week ? getWeek(lang, guide.week) : undefined;
 ---
 
@@ -120,7 +121,7 @@ const servedWeek = guide.week ? getWeek(lang, guide.week) : undefined;
         <h2>{t.practice.title}</h2>
         <p>{t.practice.intro}</p>
         {
-          guide.slug === "python-basics" ? (
+          usesPythonSim ? (
             <PythonSim lang={lang} missions={guide.missions} />
           ) : (
             <TerminalSim lang={lang} missions={guide.missions} sim={sim} />
