@@ -202,7 +202,9 @@ const runLabel =
       | "for"
       | "def"
       | "return"
-      | "with";
+      | "with"
+      | "import"
+      | "try";
     lineNo: number;
     name?: string;
     expr?: Expr;
@@ -215,6 +217,8 @@ const runLabel =
     params?: string[];
     idx?: Expr;
     openExpr?: Expr;
+    handlers?: { name?: string; body: Stmt[] }[];
+    finallyBody?: Stmt[];
   }
 
   function parseProgram(src: string): Stmt[] {
@@ -359,11 +363,69 @@ const runLabel =
         continue;
       }
       if (first.t === "name" && first.v === "import") {
+        const mod = ln.toks[1];
+        if (mod && mod.t === "name" && mod.v === "requests" && ln.toks.length === 2) {
+          stmts.push({ kind: "import", lineNo: ln.lineNo, name: "requests" });
+          i++;
+          continue;
+        }
         throw new PyError(
           "SimNote",
-          `import ${ln.toks[1]?.v ?? ""} — in this simulator, files are plain text (open / write / read). The real csv and json modules are for the real project on your machine`,
+          `import ${mod?.v ?? ""} — this simulator provides only requests. The real csv and json modules are for the real project on your machine`,
           ln.lineNo,
         );
+      }
+      if (first.t === "name" && first.v === "try") {
+        const t1 = ln.toks[1];
+        if (ln.toks.length > 2 || !t1 || t1.t !== "op" || t1.v !== ":")
+          throw new PyError("SyntaxError", "expected: try: then an indented block", ln.lineNo);
+        const tryBody = childBlock(lines, i + 1, indent, ln.lineNo);
+        let next = tryBody.next;
+        const handlers: { name?: string; body: Stmt[] }[] = [];
+        let finallyBody: Stmt[] | undefined;
+        while (next < lines.length && lines[next]!.indent === indent) {
+          const hl = lines[next]!;
+          const ht = hl.toks[0]!;
+          if (ht.t !== "name" || (ht.v !== "except" && ht.v !== "finally")) break;
+          if (ht.v === "finally") {
+            const ft = hl.toks[1];
+            if (hl.toks.length > 2 || !ft || ft.t !== "op" || ft.v !== ":")
+              throw new PyError("SyntaxError", "expected: finally: then an indented block", hl.lineNo);
+            const fb = childBlock(lines, next + 1, indent, hl.lineNo);
+            finallyBody = fb.stmts;
+            next = fb.next;
+            break;
+          }
+          // except: | except SomeError:
+          const t1 = hl.toks[1];
+          if (!t1 || (t1.t === "op" && t1.v === ":")) {
+            if (hl.toks.length > 2)
+              throw new PyError("SyntaxError", "invalid syntax", hl.lineNo);
+          } else if (t1.t === "name") {
+            if (hl.toks[2]?.t !== "op" || hl.toks[2]!.v !== ":")
+              throw new PyError(
+                "SyntaxError",
+                `expected ':' after except ${t1.v}`,
+                hl.lineNo,
+              );
+            if (hl.toks.length > 3)
+              throw new PyError("SyntaxError", "invalid syntax", hl.lineNo);
+          } else {
+            throw new PyError("SyntaxError", "expected: except: or except ErrorName:", hl.lineNo);
+          }
+          const hb = childBlock(lines, next + 1, indent, hl.lineNo);
+          handlers.push({ name: t1 && t1.t === "name" ? t1.v : undefined, body: hb.stmts });
+          next = hb.next;
+        }
+        stmts.push({
+          kind: "try",
+          lineNo: ln.lineNo,
+          body: tryBody.stmts,
+          handlers,
+          finallyBody,
+        });
+        i = next;
+        continue;
       }
       if (first.t === "name" && first.v === "return") {
         const rest = ln.toks.slice(1);
@@ -737,6 +799,10 @@ const runLabel =
       const f = (v as any).__file;
       return `<file '${f.path}' (mode '${f.mode}')>`;
     }
+    if (typeof v === "object" && "__response" in v)
+      return `<Response [${(v as any).__response.status_code}]>`;
+    if (typeof v === "object" && "__module" in v)
+      return `<module '${(v as any).__module}'>`;
     if (typeof v === "object") {
       const entries = Object.entries(v).map(
         ([k, val]) => `${pyRepr(k as Val)}: ${pyRepr(val as Val)}`,
@@ -765,11 +831,41 @@ const runLabel =
     if (typeof v === "object" && "__func" in v) return "function";
     if (typeof v === "object" && "__range" in v) return "range";
     if (typeof v === "object" && "__file" in v) return "file";
+    if (typeof v === "object" && "__response" in v) return "Response";
+    if (typeof v === "object" && "__module" in v) return "module";
     if (typeof v === "object") return "dict";
     return "str";
   }
 
   function applyMethod(obj: Val, name: string, args: Val[]): Val {
+    /* modules (requests) */
+    if (obj && typeof obj === "object" && "__module" in obj) {
+      if ((obj as any).__module === "requests" && name === "get") {
+        const url = args[0];
+        if (typeof url !== "string")
+          throw new PyError("TypeError", "requests.get() needs a URL string");
+        return fakeGet(url);
+      }
+      throw new PyError(
+        "AttributeError",
+        `module 'requests' supports get(url) — not '${name}' in this simulator`,
+      );
+    }
+    /* HTTP responses */
+    if (obj && typeof obj === "object" && "__response" in obj) {
+      const r = (obj as any).__response;
+      if (name === "status_code") return r.status_code;
+      if (name === "json") return JSON.parse(JSON.stringify(r.body));
+      if (name === "raise_for_status") {
+        if (r.status_code >= 400)
+          throw new PyError("HTTPError", `${r.status_code} Error for url '${r.url}'`);
+        return null;
+      }
+      throw new PyError(
+        "AttributeError",
+        "response objects support .status_code .json() .raise_for_status()",
+      );
+    }
     /* file handles */
     if (obj && typeof obj === "object" && "__file" in obj) {
       const f = (obj as any).__file;
@@ -1261,6 +1357,33 @@ const runLabel =
     } catch {}
   }
 
+  /* fake internet — requests.get() against a small registry of endpoints */
+  let flakyCalls = 0;
+
+  function fakeGet(url: string): any {
+    const endpoints: Record<string, () => { status_code: number; body: any }> = {
+      "https://api.frankfurter.app/latest?from=USD&to=JPY": () => ({
+        status_code: 200,
+        body: { amount: 1.0, base: "USD", date: "2026-10-15", rates: { JPY: 149.98 } },
+      }),
+      "https://api.frankfurter.app/latest?from=EUR&to=JPY": () => ({
+        status_code: 200,
+        body: { amount: 1.0, base: "EUR", date: "2026-10-15", rates: { JPY: 163.55 } },
+      }),
+      "https://api.frankfurter.app/flaky": () => {
+        flakyCalls++;
+        if (flakyCalls <= 1)
+          return { status_code: 500, body: { error: "upstream timeout" } };
+        return {
+          status_code: 200,
+          body: { amount: 1.0, base: "USD", date: "2026-10-15", rates: { JPY: 150.01 } },
+        };
+      },
+    };
+    const hit = (endpoints[url] ?? (() => ({ status_code: 404, body: { error: "not found" } })))();
+    return { __response: { url, ...hit } };
+  }
+
   function runStmts(stmts: Stmt[], env: Record<string, Val>, flags: Set<string>): void {
     for (const st of stmts) {
       let res;
@@ -1368,6 +1491,34 @@ const runLabel =
         runStmts(st.body!, env, flags);
         continue;
       }
+      if (st.kind === "import") {
+        env[st.name!] = { __module: st.name } as any;
+        continue;
+      }
+      if (st.kind === "try") {
+        flags.add("try");
+        try {
+          runStmts(st.body!, env, flags);
+        } catch (err: any) {
+          if (err instanceof PyError) {
+            const h = st.handlers!.find(
+              (x) => !x.name || x.name === err.name || x.name === "Exception",
+            );
+            if (h) {
+              flags.add("except");
+              runStmts(h.body, env, flags);
+            } else {
+              if (st.finallyBody) runStmts(st.finallyBody, env, flags);
+              throw err;
+            }
+          } else {
+            if (st.finallyBody) runStmts(st.finallyBody, env, flags);
+            throw err;
+          }
+        }
+        if (st.finallyBody) runStmts(st.finallyBody!, env, flags);
+        continue;
+      }
       if (st.kind === "return") {
         throw { __return: st.expr ? evalExpr(st.expr, env, flags) : null };
       }
@@ -1465,6 +1616,29 @@ const runLabel =
         lastOutput.some((l) => l.includes(w)),
       ),
     d8: () => lastOutput.some((l) => l.includes("total: 3400")),
+    /* week 6: requests, JSON, try/except */
+    r1: () => {
+      const r = env.response as any;
+      return !!r && typeof r === "object" && "__response" in r && r.__response.status_code === 200;
+    },
+    r2: () => lastOutput.some((l) => l.includes("149.98")),
+    r3: () => lastOutput.some((l) => l.includes("163.55")),
+    r4: () =>
+      Array.isArray(env.rates) &&
+      env.rates.length === 2 &&
+      env.rates.some((x: any) => String(x).includes("149.98")) &&
+      env.rates.some((x: any) => String(x).includes("163.55")),
+    r5: () =>
+      lastOutput.some((l) => l.includes("404")) &&
+      lastOutput.some((l) => l.includes("skipping: bad status")),
+    r6: () => lastOutput.some((l) => l.includes("recovered: 200")),
+    r7: () =>
+      codeFlags.has("except") &&
+      lastOutput.some((l) => l.includes("handled: skipped")),
+    r8: () => {
+      const c = simFiles["rates.csv"] ?? "";
+      return c.includes("149.98") && c.includes("163.55");
+    },
   };
 
   function print(text: string, cls?: string): void {
@@ -1503,6 +1677,7 @@ const runLabel =
     codeFlags = new Set();
     runPrinted = [];
     loopBudget = 10000;
+    flakyCalls = 0;
     let pyError: PyError | { message: string } | null = null;
     try {
       const stmts = parseProgram(codeArea.value);
@@ -1546,6 +1721,7 @@ const runLabel =
     allDoneShown = false;
     simFiles = {};
     persistFiles();
+    flakyCalls = 0;
     missionEls.forEach((el, i) => {
       delete el.dataset.done;
       delete el.dataset.active;

@@ -250,6 +250,7 @@ export const curriculumUz: Curriculum = {
       title: "Internet bilan gaplashadigan skriptlar",
       phase: "python",
       why: "Bu haftada skriptlar haqiqiy ishni boshlaydi: ochiq APIʼdan jonli maʼlumot olish, xatoliklarni hal qilish va natijani saqlash. Aynan shu — olish, tozalash, saqlash — data muhandisligining yuragi.",
+      guide: "requests-api",
       objectives: [
         "Virtual muhit yaratish va pip bilan paketlar oʻrnatish.",
         "requests bilan ochiq API chaqirish va JSON javobni tahlil qilish.",

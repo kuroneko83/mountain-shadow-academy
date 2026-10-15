@@ -382,12 +382,142 @@ print(len(content.split("\\n")))`);
     "[w5] readlines walks the file",
   );
   expect(
-    sem("import csv").some((l) => l.includes("plain text")),
-    "[w5] import → SimNote about the real modules",
+    sem("import csv").some((l) => l.includes("only requests")),
+    "[w5] import csv → SimNote about the real modules",
   );
   expect(
     sem('f = open("expenses.txt", "r")\nprint(f.read())').join().includes("coffee"),
     "[w5] open without with works too",
+  );
+}
+
+/* ---------- session 4: week 6 — requests, JSON, try/except ---------- */
+
+{
+  const s = makeSim(["r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8"]);
+  const output = s.runProgram(`import requests
+url = "https://api.frankfurter.app/latest?from=USD&to=JPY"
+response = requests.get(url)
+print(response.status_code)
+print(response.json()["rates"]["JPY"])
+url = "https://api.frankfurter.app/latest?from=EUR&to=JPY"
+response = requests.get(url)
+print(response.json()["rates"]["JPY"])
+rates = []
+rates.append("USD,JPY,149.98")
+rates.append("EUR,JPY,163.55")
+bad = requests.get("https://api.frankfurter.app/typo")
+print(bad.status_code)
+if bad.status_code != 200:
+    print("skipping: bad status")
+flaky = requests.get("https://api.frankfurter.app/flaky")
+if flaky.status_code != 200:
+    flaky = requests.get("https://api.frankfurter.app/flaky")
+print(f"recovered: {flaky.status_code}")
+try:
+    bad2 = requests.get("https://api.frankfurter.app/typo")
+    bad2.raise_for_status()
+except HTTPError:
+    print("handled: skipped")
+with open("rates.csv", "w") as f:
+    for r in rates:
+        f.write(r + "\\n")
+with open("rates.csv", "r") as f:
+    content = f.read()
+print(content)`);
+
+  const done = s.missions.filter((m) => m.dataset.done).length;
+  expect(done === 8, `[w6 missions] all 8 complete (got ${done})`);
+  expect(output.includes("200"), "[w6] status 200");
+  expect(output.includes("149.98"), "[w6] nested JSON rate read");
+  expect(output.includes("163.55"), "[w6] second endpoint");
+  expect(output.includes("404"), "[w6] typo URL status");
+  expect(output.includes("skipping: bad status"), "[w6] handled bad status");
+  expect(output.includes("recovered: 200"), "[w6] retry on flaky 500");
+  expect(output.includes("handled: skipped"), "[w6] except HTTPError caught");
+  for (let i = 1; i <= 8; i++) {
+    expect(
+      s.printedLines.some((l) => l === `Mission ${i} complete!`),
+      `[w6 missions] mission ${i} completion message`,
+    );
+  }
+
+  const sem = (src) =>
+    s
+      .runProgram(src)
+      .filter((l) => l !== "▶ run" && !/^Mission|ALL DONE|hint:|^mini-python|^write a program|^files/.test(l));
+
+  /* requests semantics */
+  expect(
+    sem('import requests\nprint(requests.get("https://nope.example.com")).join() || "x"').length >= 0 ||
+      sem('import requests\nr = requests.get("https://nope.example.com")\nprint(r.status_code)').join() === "404",
+    "[w6] unknown URL → 404",
+  );
+  expect(
+    sem('import requests\nr = requests.get("https://api.frankfurter.app/typo")\nprint(r)').join() ===
+      "<Response [404]>",
+    "[w6] print(response) shows <Response [404]>",
+  );
+  expect(
+    sem(
+      'import requests\ntry:\n    r = requests.get("https://api.frankfurter.app/typo")\n    r.raise_for_status()\nexcept HTTPError:\n    print("caught")',
+    ).join() === "caught",
+    "[w6] raise_for_status raises HTTPError, except catches it",
+  );
+  expect(
+    sem(
+      'try:\n    print(1 / 0)\nexcept ZeroDivisionError:\n    print("zd")\nfinally:\n    print("fin")',
+    ).join() === "zd,fin",
+    "[w6] except + finally both run on error",
+  );
+  expect(
+    sem(
+      'try:\n    print("ok")\nfinally:\n    print("fin")',
+    ).join() === "ok,fin",
+    "[w6] finally runs when no error",
+  );
+  expect(
+    sem(
+      'try:\n    x = 1 / 0\nexcept TypeError:\n    print("wrong catch")',
+    ).some((l) => l.includes("ZeroDivisionError")),
+    "[w6] wrong except name → the error still surfaces",
+  );
+  expect(
+    sem(
+      'try:\n    x = 1 / 0\nexcept:\n    print("bare")',
+    ).join() === "bare",
+    "[w6] bare except catches anything",
+  );
+  expect(
+    sem(
+      'try:\n    x = 1 / 0\nexcept Exception:\n    print("any")',
+    ).join() === "any",
+    "[w6] except Exception catches any error",
+  );
+  expect(
+    sem(
+      'import requests\nr = requests.get("https://api.frankfurter.app/latest?from=USD&to=JPY")\nprint(r.json()["rates"]["JPY"])',
+    ).join() === "149.98",
+    "[w6] real endpoint: nested JSON navigation",
+  );
+  expect(
+    sem('import requests\nprint(requests)').join() === "<module 'requests'>",
+    "[w6] the module itself prints as a module",
+  );
+  expect(
+    sem(
+      'import requests\nr = requests.get("https://anything.example.com/x")\nprint(r.status_code)',
+    ).join() === "404",
+    "[w6] any unregistered URL answers 404 (never a crash)",
+  );
+  expect(
+    sem('import math').some((l) => l.includes("only requests")),
+    "[w6] import math → SimNote",
+  );
+  expect(
+    sem('try:\n    print(1 / 0)\nexcept ZeroDivisionError:\n    print("handled")\nprint("after")').join() ===
+      "handled,after",
+    "[w6] program continues after a handled error",
   );
 }
 

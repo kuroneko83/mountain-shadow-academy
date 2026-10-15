@@ -250,6 +250,7 @@ export const curriculumJa: Curriculum = {
       title: "インターネットと話すスクリプト",
       phase: "python",
       why: "今週からスクリプトが本物の仕事を始めます：公開APIからライブデータを取得し、失敗を処理し、結果を保存する。「取得 → クレンジング → 保存」というこのスキルこそ、データエンジニアリングの核心です。",
+      guide: "requests-api",
       objectives: [
         "仮想環境をセットアップし、pipでパッケージを入れられる。",
         "requestsで公開APIを呼び、JSONレスポンスをパースできる。",

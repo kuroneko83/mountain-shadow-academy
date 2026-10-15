@@ -250,6 +250,7 @@ export const curriculumEn: Curriculum = {
       title: "Scripts that talk to the internet",
       phase: "python",
       why: "This is the week scripts start doing real work: pulling live data from a public API, handling failure, and saving the result. This exact skill — fetch, clean, save — is the heart of data engineering.",
+      guide: "requests-api",
       objectives: [
         "Set up a virtual environment and install packages with pip.",
         "Call a public API with requests and parse the JSON response.",
