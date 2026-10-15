@@ -866,3 +866,25 @@ td:nth-child(n+2) {
 .guide-week-link:hover {
   border-color: var(--p1);
 }
+
+.guide-steps {
+  margin: 0.9rem 0 0;
+  padding-left: 1.5rem;
+  display: grid;
+  gap: 0.8rem;
+  max-width: 46rem;
+}
+
+.guide-steps li::marker {
+  font-weight: 700;
+  color: var(--p1);
+}
+
+.guide-steps li strong {
+  display: block;
+}
+
+.guide-steps li span {
+  color: var(--ink-soft);
+  font-size: 0.95rem;
+}

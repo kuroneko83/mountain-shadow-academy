@@ -51,6 +51,18 @@ const servedWeek = guide.week ? getWeek(lang, guide.week) : undefined;
       <section class="guide-section">
         <h2>{s.heading}</h2>
         <p>{s.body}</p>
+        {
+          s.steps && (
+            <ol class="guide-steps">
+              {s.steps.map((st) => (
+                <li>
+                  <strong>{st.title}</strong>
+                  <span>{st.detail}</span>
+                </li>
+              ))}
+            </ol>
+          )
+        }
         {s.examples && (
           <div class="guide-examples">
             {s.examples.map((ex) => (

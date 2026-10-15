@@ -39,10 +39,16 @@ export interface CommandExample {
   note?: string;
 }
 
+export interface GuideStep {
+  title: string;
+  detail: string;
+}
+
 export interface GuideSection {
   heading: string;
   body: string;
   examples?: CommandExample[];
+  steps?: GuideStep[];
 }
 
 export interface CheatRow {

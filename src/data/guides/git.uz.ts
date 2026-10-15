@@ -4,7 +4,7 @@ export const guideGitUz: Guide = {
   slug: "git",
   title: "Git va GitHub — qadam ba qadam",
   intro:
-    "Bu qoʻllanma 2-haftaga xizmat qiladi. Git qoʻrqinchli degan obroʻyga ega — asossiz. Bu papkangiz uchun vaqt mashinasi: nomlangan suratlar (commit) olasiz va ularga istagan vaqt qaytasiz. GitHub esa oʻsha suratlar ochiq saqlanadigan joy. Darslikni oʻqing, keyin simulyatorda toʻliq sayohatni — init, status, add, commit, log, remote, push — mashq qiling va testni yeching.",
+    "Bu qoʻllanma 2-haftaga xizmat qiladi. Git qoʻrqinchli degan obroʻyga ega — asossiz. Bu papkangiz uchun vaqt mashinasi: nomlangan suratlar (commit) olasiz va ularga istagan vaqt qaytasiz. GitHub esa oʻsha suratlar ochiq saqlanadigan joy. Darslikni oʻqing, simulyatorda toʻliq sayohatni — init, status, add, commit, log, remote, push — mashq qiling, testni yeching va 10–14-boʻlimlarda real dunyo koʻprigini — GitHub akkaunt yaratish va kompyuterni ulashni — bosqichma-bosqich bajaring.",
   week: "02-git-github",
   sections: [
     {
@@ -127,7 +127,228 @@ export const guideGitUz: Guide = {
       ],
     },
     {
-      heading: "10. .gitignore — GitHubʼga hech qachon bormaydigan narsalar",
+      heading: "10. GitHub akkaunt yaratish — bosqichma-bosqich",
+      body: "Hozirgacha hammasi mashinangizda boʻldi. Real push qilishdan oldin GitHub akkaunt kerak — va tanlagan username ingiz ochiq kasbiy identifikatsiyangizga aylanadi, shuning uchun aksariyat odam berganidan koʻproq eʼtibor talab qiladi. Vaqti: taxminan 15 daqiqa, bosishma-bosish.",
+      steps: [
+        {
+          title: "github.com ga kiring va Sign up ni bosing",
+          detail:
+            "Istalgan brauzer. Yuqori oʻngdagi yashil tugma. Roʻyxatdan oʻtish formasi tartib bilan uch narsani soʻraydi: email, parol, foydalanuvchi nomi.",
+        },
+        {
+          title: "Email: yillar davomida saqlaydiganingizni",
+          detail:
+            "Bu email push qiladigan har bir commitda koʻrinadi — ish beruvchilar uni koʻradi. Gmail yaxshi. Ish emailidan saqlaning: ish almanganda oʻchadi va u bilan qilingan commitlar ish beruvchiga tegishli boʻladi.",
+        },
+        {
+          title: "Parol: uzun va GitHub uchun alohida",
+          detail:
+            "Parol menejeri yordam beradi. Hali boʻlmasa, qisqa aralashmatondan koʻra uzun gap uslubidagi parol kuchliroq.",
+        },
+        {
+          title: "Foydalanuvchi nomi: bu kasbiy identifikatsiyangiz — yozishdan oldin oʻylang",
+          detail:
+            "Profil URL manzilingiz github.com/NOMINGIZ boʻladi va u rezyume va arizalarga tushadi. firstname-lastname uslubi mukammal. Gamer va anime taxalluslari hamda ortiqcha raqamlardan saqlaning — bu nomni yaponiyalik ish beruvchilar bosadi.",
+        },
+        {
+          title: "Maslahani yechib Create account ni bosing",
+          detail:
+            "Captcha, baʼzan kichik test. Keyin GitHub emailingizga tasdiqlash kodi yuboradi.",
+        },
+        {
+          title: "Emailni ochib kodni qoʻying",
+          detail:
+            "Bir daqiqada kelmasa, spamni tekshiring. Kod tez tugaydi — tugasa, yangisini soʻrang, shunchaki.",
+        },
+        {
+          title: "Shaxsiylashtirish savollariga javob bering (yoki oʻtkazib yuboring)",
+          detail:
+            "GitHub tajriba va maqsadlaringizni soʻraydi. Rost javoblar panel tavsiyalarini yaxshilaydi, lekin oʻtkazib yuborish ham yaxshi.",
+        },
+        {
+          title: "Free tarifni tanlang",
+          detail:
+            "Ochiq portfel uchun Free yetarli: ochiq repozitoriyalar cheksiz. Hech qanday karta maʼlumotini kiritmang.",
+        },
+        {
+          title: "2FA — ikki faktorli autentifikatsiya (GitHub talab qiladi)",
+          detail:
+            "Avval telefonda autentifikatsiya ilova oʻrnating (Microsoft Authenticator yoki Google Authenticator, ikkalasi bepul). Keyin 'Use an authenticator app' ni tanlang, QR kodni ilova bilan skanerlang va koʻrsatgan 6 xonali kodni kiriting. SMS ham ishlaydi, lekin ilova xavfsizroq va signalsiz ham ishlaydi.",
+        },
+        {
+          title: "Tiklash kodlarini saqlang — jiddiy, aynan shu qadam",
+          detail:
+            "GitHub 16 ta bir martalik kod koʻrsatadi. Faylni yuklab olib, faqat oʻsha telefonda emas, xavfsiz joyda saqlang. Telefonni yoʻqotsangiz, akkauntga qaytishning yagona yoʻli shu kodlar.",
+        },
+        {
+          title: "Minimal profil parvarishi (5 daqiqa)",
+          detail:
+            "Yuqori oʻng → avatar → 'Your profile'. Yuz surati (mushuk yoki logo emas — haqiqiy, doʻstona yuz; yapon ish beruvchilar bunga ayniqsa eʼtibor beradi), koʻrsatiladigan ism, bir qatorlik bio va joyingizni qoʻshing. Toʻliq parvarish 12-haftada — suratni bugun qilishga arziydi.",
+        },
+      ],
+    },
+    {
+      heading: "11. GitHubʼda learning-log repozitoriyasi yaratish",
+      body: "Iki daqiqa, bosishma-bosish — va chetlab oʻtiladigan bitta tuzoq. Maqsad: keyingi boʻlimda lokal learning-log ulanadigan, GitHubʼdagi boʻsh repozitoriya.",
+      steps: [
+        {
+          title: "Yuqori oʻngdagi + → 'New repository'",
+          detail: "Yoki toʻgʻridan-toʻgʻri github.com/new ga boring.",
+        },
+        {
+          title: "Repository name: learning-log",
+          detail:
+            "Lokal papka nomi bilan aynan moslashtirish odat, majburiyat emas — lekin mos nomlar aqlda sogʻliqni saqlaydi.",
+        },
+        {
+          title: "Description (ixtiyoriy): halol bir qator",
+          detail:
+            "Misol: 'My study log — Python, scripting, and data engineering'. Ish beruvchilar uni bosishdan oldin oʻqiydi.",
+        },
+        {
+          title: "Public ni tanlang",
+          detail:
+            "Public — butun maqsad: bu portfelingiz. Koʻrinmas ish beruvchi sizni ishga ololmaydi. (Maxfiy maʼlumotlar ochiq repoga baribir kirmaydi — bu ikki boʻlim pastdagi .gitignore vazifasi.)",
+        },
+        {
+          title: "'Add a README file' ni belgilamang — tuzoq shu",
+          detail:
+            "GitHub README yaratsa, birinchi push rad etiladi ('remote contains work you do not have locally') — GitHub nusxasida sizda yoʻq commit paydo boʻlgani uchun. Repozitoriyani boʻsh holatda qoldiring; oʻz READMEngiz allaqachon mashinangizda bor.",
+        },
+        {
+          title: "'Create repository' ni bosing",
+          detail:
+            "GitHub holatingizga mos aniq buyruqlarni koʻrsatadigan sahifa chiqaradi — '…or push an existing repository from the command line' ostida. Oʻsha ikki qator — aynan sizning remote add va push buyruqlaringiz. GitHub ularni oʻzi yozadi; yodlash shart emas.",
+        },
+      ],
+      examples: [
+        {
+          label: "Repo yaratilgandan keyin GitHub koʻrsatadigan ikki qator",
+          cmd: "git remote add origin https://github.com/you/learning-log.git\ngit push -u origin main",
+          note: "Sahifadan nusxa oling — username va repo nomi bilan moslashtirilgan.",
+        },
+      ],
+    },
+    {
+      heading: "12. Kompyuterni ulash — Windows",
+      body: "Avval muhim haqiqat: 2021-yil 13-avgustdan boshlab GitHub git push uchun akkaunt parolini qabul qilmaydi. Git ichiga GitHub parolini yozish davri tugadi. Windowsʼda koʻprik — Git Credential Manager: birinchi push brauzerni ochadi, bir marta kirasiz va mashina buni abadiy eslab qoladi.",
+      steps: [
+        {
+          title: "Git for Windows oʻrnating (hali boʻlmasa)",
+          detail:
+            "git-scm.com/download/win dan yuklab oʻrnating. Oʻrnatuvchida taxminan oʻn ekran variant bor — standartlarning hammasi yaxshi. 'Git Credential Manager' belgilangan qolsin (standart shunday). Tugaguncha Next.",
+        },
+        {
+          title: "Oʻrnatgandan keyin YANGI terminal oching",
+          detail:
+            "git koʻrinishi uchun PowerShellni qayta ochish kerak.git --version deb yozing — raqam bilan javob bersa, asbob ulandi.",
+        },
+        {
+          title: "Gitga kim ekaningizni ayting — mashinaga bir marta",
+          detail:
+            "git config --global user.name \"Ismingiz\" va git config --global user.email \"you@example.com\" — GitHubʼda ishlatgan emailingiz. Aynan shu commitlarga ismingizni qoʻyadi.",
+        },
+        {
+          title: "Birinchi pushni qiling — brauzer oynasi ochiladi",
+          detail:
+            "Birinchi marta git push qilganingizda Git Credential Manager 'Sign in with your browser' oynasini ochadi. Uni tanlang: brauzer GitHubni ochadi, kirasiz, Authorize ni bosasiz — oyna yopiladi va push avtomatik davom etadi. Bu login Windows tomonidan saqlanadi — bu mashinada oynani yana koʻrmaysiz.",
+        },
+      ],
+      examples: [
+        {
+          label: "Ikkalasi (mashinaga bir marta)",
+          cmd: 'git config --global user.name "Ismingiz"\ngit config --global user.email "you@example.com"',
+        },
+        {
+          label: "Git ishlayotganini tekshirish",
+          cmd: "git --version",
+          output: "git version 2.45.0",
+        },
+      ],
+    },
+    {
+      heading: "13. Kompyuterni ulash — Linux, A yoʻl: shaxsiy kirish tokeni (PAT)",
+      body: "Linuxʼda ham xuddi shu haqiqat: akkaunt paroli gitga hech qachon oʻtmaydi. Ikki halol yoʻl bor. A yoʻl — token: tez, HTTPS bilan ishlaydi, lekin muddati tugaydi va faylda saqlanadi. B yoʻl (keyingi boʻlim) — SSH kalit: oʻn daqiqa, abadiy ishlaydi, professional standart — ixtiyori boʻlsangiz B ni tanlang. Ikki yoʻl ham git oʻrnatilganini (Ubuntu/Debianʼda sudo apt install git, Fedoraʼda sudo dnf install git) va ikkala git config bajarilganini talab qiladi.",
+      steps: [
+        {
+          title: "GitHubʼda token yarating",
+          detail:
+            "Yuqori oʻng → Settings → Developer settings (chap pastda) → Personal access tokens → Tokens (classic) → Generate new token (classic). Nom: 'my-laptop', 'repo' belgisini qoʻying, 90 kun muddat, Generate.",
+        },
+        {
+          title: "TOKENNI HOZIR NUSXALANG — faqat bir marta koʻrsatiladi",
+          detail:
+            "ghp_... bilan boshlanadigan satr. Parol menejeriga yoki vaqtincha yozuvga nusxa oling. Nusxalamasdan sahifani yopsangiz: oʻsha tokenni oʻchirib, yangisini yarating — eskisi dizayn boʻyicha abadiy yoʻqoladi.",
+        },
+        {
+          title: "Birinchi push: username = GitHub nomingiz, password = token",
+          detail:
+            "git 'Username for https://github.com' deb soʻrasa: GitHub foydalanuvchi nomingiz. 'Password for https://you@github.com' ga: TOKENNI qoʻying — akkaunt parolini emas. Akkaunt paroli 2021-yildan ishlamaydi; bu xato boshlanuvchining birinchi devori.",
+        },
+        {
+          title: "Ixtiyoriy: eslab qolishni ayting",
+          detail:
+            "git config --global credential.helper store — ~/.git-credentials ga oddiy matnda saqlaydi (shaxsiy noutbuk uchun yaxshi). Shundan keyin pushlar soʻramaydi.",
+        },
+      ],
+      examples: [
+        {
+          label: "Birinchi pushda git soʻraydigan narsa",
+          cmd: "Username for 'https://github.com': you\nPassword for 'https://you@github.com': ghp_paste_the_token_here",
+          note: "Parol maydoni tokenni istaydi. Akkaunt paroli hech qachon emas.",
+        },
+      ],
+    },
+    {
+      heading: "14. Kompyuterni ulash — Linux, B yoʻl: SSH kalit (bir marta, abadiy)",
+      body: "Professional standart. Bitta kalit juftligi: maxfiy kalit mashinangizda abadiy qoladi, ochiq kalit GitHubʼga bir marta qoʻyiladi. Tokenlar yoʻq, muddatlar yoʻq, brauzer oynalari yoʻq. Har yangi mashinada buni yana qilasiz — bir yildan keyin bu oddiy kunlik ish.",
+      steps: [
+        {
+          title: "Kalitni yarating",
+          detail:
+            "ssh-keygen -t ed25519 -C \"you@example.com\" — keyin Enter: standart joylashuv (~/.ssh/id_ed25519) yana Enter: boʻsh parol frazasi (shaxsiy noutbuk uchun yaxshi; parol frazasi xavfsizroq, lekin har rebootdan keyin soʻraydi).",
+        },
+        {
+          title: "OCHIQ kalitni koʻrsatib nusxa oling",
+          detail:
+            "cat ~/.ssh/id_ed25519.pub — ssh-ed25519 bilan boshlanib emailingiz bilan tugaydigan bitta qator. Butun qatorni tanlab nusxa oling. MAXFIY kalit (~/.ssh/id_ed25519, .pub yoʻq) mashinangizdan hech qachon chiqmaydi — uni hech qayerga, GitHubʼga ham, hamkasbga ham qoʻymang.",
+        },
+        {
+          title: "GitHubʼda: Settings → SSH and GPG keys → New SSH key",
+          detail:
+            "Title: bir yildan keyin oʻzingiz tanidigan nom ('ubuntu-laptop', 'thinkpad'). Key type 'Authentication Key' qoladi. Katta maydonga ochiq kalitni qoʻying. Add SSH key ni bosing.",
+        },
+        {
+          title: "Sinab koʻring",
+          detail:
+            "ssh -T git@github.com — birinchi marta host barmoq izi soʻraydi: yes deb yozing. Muvaffaqiyat xabari: 'Hi NOMINGIZ! You've successfully authenticated, but GitHub does not provide shell access.' Bu — yashil chiroq.",
+        },
+        {
+          title: "Remotelaringizda SSH URL ishlating",
+          detail:
+            "git remote add origin git@github.com:you/learning-log.git — git@ bilan boshlanib ikki nuqta borasiga eʼtibor. HTTPS remote allaqachon qoʻshilgan boʻlsa, qayta yaratmaysiz, almashtirasiz: git remote set-url origin git@github.com:you/learning-log.git.",
+        },
+      ],
+      examples: [
+        {
+          label: "Linux / macOS",
+          cmd: "ssh-keygen -t ed25519 -C \"you@example.com\"",
+          note: "Enter, Enter — shaxsiy noutbuk uchun standartlar yetarli.",
+        },
+        {
+          label: "Test — bu xabar muvaffaqiyat degani",
+          cmd: "ssh -T git@github.com",
+          output:
+            "Hi you! You've successfully authenticated, but GitHub does not provide shell access.",
+        },
+        {
+          label: "Mavjud remoteni SSHʼga almashtirish",
+          cmd: "git remote set-url origin git@github.com:you/learning-log.git",
+        },
+      ],
+    },
+    {
+      heading: "15. .gitignore — GitHubʼga hech qachon bormaydigan narsalar",
       body: "Baʼzi fayllar hech qachon commit qilinmasligi kerak: parollar va API kalitlar (.env fayllari), keraksiz papkalar (node_modules, .venv, __pycache__), katta data fayllar. Repo ildizidagi .gitignore fayli ularni sanab oʻtadi va Git mavjud emasdek eʼtiborsiz qoldiradi. GitHub standart tarzda ochiq — u yerga push qilingan API kaliti sizib chiqqanlikdir; botlar bir necha daqiqada topadi va keyin faylni oʻchirsangiz ham tarixda qoladi. Birinchi pushdan oldin: .gitignore yozing.",
       examples: [
         {
@@ -138,14 +359,21 @@ export const guideGitUz: Guide = {
       ],
     },
     {
-      heading: "11. Yomon ketganda — klassik xatolar",
-      body: "'fatal: not a git repository' — git buyrugʻini repodan tashqarida ishga tushirganingiz: avval loyiha papkasiga cd. 'nothing to commit, working tree clean' — hammasi allaqachon commit qilingan: xato emas, maʼlumot. 'fatal: pathspec did not match any files' — mavjud boʻlmagan nom bilan git add: ls bilan nomni tekshiring. 'Please tell me who you are' — 5-boʻlimdagi identifikatsiya xatosi: ikkita git config, mashinaga bir marta. 'push rejected' — GitHub nusxasida sizda yoʻq commitlar bor (boshqa birov push qilgan yoki saytda tahrirlagan): force bilan boshlanadigan buyruqlardan oldin murabbingizdan soʻrang. Git xatolarining oltin qoidasi: haqiqatan yoʻqoladigan narsa deyarli yoʻq, vahima buyruqlari (reset --hard, push --force) oʻzgarishning oʻzidan koʻproq zarar yetkazadi.",
+      heading: "16. Yomon ketganda — klassik xatolar",
+      body: "'fatal: not a git repository' — git buyrugʻini repodan tashqarida ishga tushirganingiz: avval loyiha papkasiga cd. 'nothing to commit, working tree clean' — hammasi allaqachon commit qilingan: xato emas, maʼlumot. 'fatal: pathspec did not match any files' — mavjud boʻlmagan nom bilan git add: ls bilan nomni tekshiring. 'Please tell me who you are' — 5-boʻlimdagi identifikatsiya xatosi: ikkita git config, mashinaga bir marta. 'Support for password authentication was removed' — siz (yoki saqlangan eski parol) akkaunt parolini sinab koʻrdingiz: Windowsʼda brauzer loginini qayta qiling (12-boʻlim), Linuxʼda token yoki SSH kalit (13–14-boʻlimlar) yordam beradi. 'push rejected — remote contains work you do not have locally' — GitHub repozitoriyasi boʻsh emas (odatda 11-boʻlimdagi README tuzogʻi). Git xatolarining oltin qoidasi: haqiqatan yoʻqoladigan narsa deyarli yoʻq, vahima buyruqlari (reset --hard, push --force) oʻzgarishning oʻzidan koʻproq zarar yetkazadi — shubhada boʻlsangiz, murabbingizdan soʻrang.",
       examples: [
         {
           label: "Repodan tashqarida",
           cmd: "git status",
           output: "fatal: not a git repository (or any of the parent directories): .git",
           note: "Loyiha papkasiga kiring. Git faqat repo ichida ishlaydi.",
+        },
+        {
+          label: "2021-yilgi parol devori (hamma uriladi)",
+          cmd: "git push",
+          output:
+            "remote: Support for password authentication was removed on August 13, 2021.\nfatal: Authentication failed for 'https://github.com/...'",
+          note: "Bu xato ham, sizning aybingiz ham emas. Windows: brauzer loginini qayta qiling. Linux: token (A yoʻl) yoki SSH kalit (B yoʻl).",
         },
       ],
     },
@@ -163,6 +391,8 @@ export const guideGitUz: Guide = {
       { action: "GitHubʼga ulash", win: "git remote add origin <url>", linux: "git remote add origin <url>" },
       { action: "Nashr (birinchi marta)", win: "git push -u origin main", linux: "git push -u origin main" },
       { action: "Nashr (keyingi marta)", win: "git push", linux: "git push" },
+      { action: "SSH ulanishini test", win: "ssh -T git@github.com", linux: "ssh -T git@github.com" },
+      { action: "Remoteni SSHʼga almashtirish", win: "git remote set-url origin git@github.com:you/repo.git", linux: "git remote set-url origin git@github.com:you/repo.git" },
     ],
   },
   missions: [
@@ -315,5 +545,5 @@ export const guideGitUz: Guide = {
     },
   ],
   outro:
-    "Simulyator sizni 2-hafta loyihasining aynan sayohati boʻylab olib bordi: papka → repo → readme → commitlar → GitHub. Maslahatlarsiz yana bir marta noldan qiling — init/add/commit/push barmoqlaringizdan avtomatik chiqqanda, haqiqiy GitHubʼda qilishga tayyorsiz. Va esda tuting: adashganingizda javob har doim — git status.",
+    "Simulyator sizni 2-hafta loyihasining aynan sayohati boʻylab olib bordi: papka → repo → readme → commitlar → GitHub. Maslahatlarsiz yana bir marta noldan qiling — init/add/commit/push barmoqlaringizdan avtomatik chiqqanda, haqiqiy ishga tayyorsiz. Keyin 10–14-boʻlimlar oxirgi qadamlarning real versiyasini bosib oʻtadi: akkaunt, boʻsh repozitoriya va mashinaga bir martalik ulanish. Va esda tuting: adashganingizda javob har doim — git status.",
 };
