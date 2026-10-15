@@ -78,6 +78,7 @@ export const curriculumJa: Curriculum = {
       title: "Git & GitHub：今日からポートフォリオ開始",
       phase: "foundations",
       why: "今週から、あなたが書くすべてのコードは公開されたGitHubリポジトリにコミットされます。つまり、まだ上手にプログラミングができないうちから、ポートフォリオは育ち始めるのです。",
+      guide: "git",
       objectives: [
         "Gitリポジトリを作成し、コミットし、GitHubにプッシュできる。",
         "各リポジトリに分かりやすいREADME.mdを書ける。",

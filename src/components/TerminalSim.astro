@@ -5,15 +5,17 @@ import type { Lang, Mission } from "../data/types";
 interface Props {
   lang: Lang;
   missions: Mission[];
+  sim?: "command-line" | "git";
 }
 
-const { lang, missions } = Astro.props;
+const { lang, missions, sim = "command-line" } = Astro.props;
 const t = UI[lang].practice;
 ---
 
 <div
   class="term-wrap"
   id="term-app"
+  data-sim={sim}
   data-mission-complete={t.missionComplete}
   data-missions-done={t.missionsDone}
   data-free-play={t.freePlay}
@@ -69,6 +71,7 @@ const t = UI[lang].practice;
   const missionCompleteTpl = app.dataset.missionComplete ?? "Mission {n} complete!";
   const missionsDoneMsg = app.dataset.missionsDone ?? "";
   const freePlayLabel = app.dataset.freePlay ?? "";
+  const SIM = app.dataset.sim ?? "command-line";
 
   type Node = { type: "dir"; children: Record<string, Node> } | { type: "file"; content: string };
 
@@ -92,6 +95,22 @@ const t = UI[lang].practice;
   let histIdx = -1;
   let last: { name: string; args: string[]; ok: boolean } | null = null;
   let allDoneShown = false;
+
+  /* ---------- simulated git state ---------- */
+
+  const gitEmpty = () => ({
+    initialized: false,
+    repoRoot: "",
+    staged: new Set<string>(),
+    tracked: {} as Record<string, string>,
+    commits: [] as { hash: string; msg: string; snap: Record<string, string> }[],
+    remote: "",
+    remoteUrl: "",
+    pushed: 0,
+    userName: "",
+    userEmail: "",
+  });
+  let git = gitEmpty();
 
   function print(text: string, cls?: string): void {
     const div = document.createElement("div");
@@ -168,7 +187,9 @@ const t = UI[lang].practice;
     switch (name) {
       case "help":
         print(
-          "commands: pwd, ls, cd, cat, mkdir, touch, echo (with > and >>), cp, mv, rm (-r for folders), clear, python",
+          SIM === "git"
+            ? "commands: ls, cd, cat, echo (>, >>), mkdir, touch, clear + git: init, status, add, commit -m, log, remote add, push, config"
+            : "commands: pwd, ls, cd, cat, mkdir, touch, echo (with > and >>), cp, mv, rm (-r for folders), clear, python",
           "term-info",
         );
         return true;
@@ -378,6 +399,8 @@ const t = UI[lang].practice;
         }
         return true;
       }
+      case "git":
+        return runGit(args);
       default:
         print(`${name}: command not found — type help`, "term-err");
         return false;
@@ -387,6 +410,215 @@ const t = UI[lang].practice;
   function isDir(p: string): boolean {
     const n = getNode(p);
     return !!n && n.type === "dir";
+  }
+
+  /* ---------- git helpers ---------- */
+
+  function keyOf(p: string): string | null {
+    const segs = resolve(p);
+    return segs ? segs.join("/") : null;
+  }
+
+  function currentContent(key: string): string | null {
+    const n = getNode("~/" + key);
+    return n && n.type === "file" ? n.content : null;
+  }
+
+  function basename(key: string): string {
+    return key.split("/").pop() ?? key;
+  }
+
+  function fileKeysUnder(prefix: string[]): string[] {
+    const keys: string[] = [];
+    const walk = (node: Node, path: string[]) => {
+      if (node.type === "file") keys.push(path.join("/"));
+      else
+        for (const [name, child] of Object.entries(node.children))
+          walk(child, [...path, name]);
+    };
+    const start = getNode("~/" + prefix.join("/"));
+    if (start) walk(start, prefix);
+    return keys;
+  }
+
+  function shortHash(): string {
+    return Math.random().toString(16).slice(2, 9);
+  }
+
+  function runGit(args: string[]): boolean {
+    const sub = args[0];
+    const rest = args.slice(1);
+    switch (sub) {
+      case undefined:
+        print("usage: git <command> [...]", "term-err");
+        return false;
+      case "init": {
+        git.initialized = true;
+        git.repoRoot = cwd.join("/");
+        print(
+          `Initialized empty Git repository in ~/${git.repoRoot ? git.repoRoot + "/" : ""}.git/`,
+        );
+        return true;
+      }
+      case "status": {
+        if (!git.initialized) {
+          print("fatal: not a git repository (or any of the parent directories): .git", "term-err");
+          return false;
+        }
+        print("On branch main");
+        const prefix = git.repoRoot ? git.repoRoot.split("/") : [];
+        const all = fileKeysUnder(prefix);
+        const staged = all.filter((k) => git.staged.has(k));
+        const modified = all.filter(
+          (k) => k in git.tracked && currentContent(k) !== git.tracked[k],
+        );
+        const untracked = all.filter((k) => !(k in git.tracked) && !git.staged.has(k));
+        if (staged.length) {
+          print("Changes to be committed:");
+          staged.forEach((k) => print(`\tnew file:   ${basename(k)}`));
+        }
+        if (modified.length) {
+          print("Changes not staged for commit:");
+          modified.forEach((k) => print(`\tmodified:   ${basename(k)}`));
+        }
+        if (untracked.length) {
+          print("Untracked files:");
+          untracked.forEach((k) => print(`\t${basename(k)}`));
+        }
+        if (!staged.length && !modified.length && !untracked.length)
+          print("nothing to commit, working tree clean");
+        return true;
+      }
+      case "add": {
+        if (!git.initialized) {
+          print("fatal: not a git repository", "term-err");
+          return false;
+        }
+        const targets = rest.filter((a) => !a.startsWith("-"));
+        if (targets.length === 0) {
+          print("Nothing specified, nothing added.", "term-err");
+          return false;
+        }
+        let ok = true;
+        for (const t of targets) {
+          if (t === "." || t === "*") {
+            fileKeysUnder(git.repoRoot ? git.repoRoot.split("/") : []).forEach((k) =>
+              git.staged.add(k),
+            );
+            continue;
+          }
+          const k = keyOf(t);
+          const node = getNode(t);
+          if (!k || !node || node.type !== "file") {
+            print(`fatal: pathspec '${t}' did not match any files`, "term-err");
+            ok = false;
+            continue;
+          }
+          git.staged.add(k);
+        }
+        return ok;
+      }
+      case "commit": {
+        if (!git.initialized) {
+          print("fatal: not a git repository", "term-err");
+          return false;
+        }
+        const mIdx = rest.indexOf("-m");
+        const msg = mIdx !== -1 ? rest[mIdx + 1] : "";
+        if (!msg) {
+          print('error: no message — use: git commit -m "your message"', "term-err");
+          return false;
+        }
+        if (!git.userName || !git.userEmail) {
+          print("*** Please tell me who you are.", "term-err");
+          print('  git config --global user.name "Your Name"', "term-err");
+          print('  git config --global user.email "you@example.com"', "term-err");
+          return false;
+        }
+        if (git.staged.size === 0) {
+          print("nothing to commit, working tree clean", "term-err");
+          return false;
+        }
+        const snap: Record<string, string> = { ...git.tracked };
+        git.staged.forEach((k) => {
+          const c = currentContent(k);
+          if (c !== null) snap[k] = c;
+        });
+        const hash = shortHash();
+        const label = git.commits.length === 0 ? "(root-commit) " : "";
+        git.commits.push({ hash, msg, snap });
+        print(`[main ${label}${hash}] ${msg}`);
+        print(` ${git.staged.size} file${git.staged.size > 1 ? "s" : ""} changed`);
+        git.staged.clear();
+        return true;
+      }
+      case "log": {
+        if (!git.initialized) {
+          print("fatal: not a git repository", "term-err");
+          return false;
+        }
+        if (git.commits.length === 0) {
+          print("fatal: your current branch 'main' does not have any commits yet", "term-err");
+          return false;
+        }
+        [...git.commits].reverse().forEach((c) => print(`${c.hash}  ${c.msg}`));
+        return true;
+      }
+      case "remote": {
+        if (rest[0] === "add") {
+          const [name, url] = rest.slice(1);
+          if (!name || !url) {
+            print("usage: git remote add <name> <url>", "term-err");
+            return false;
+          }
+          git.remote = name;
+          git.remoteUrl = url;
+          return true;
+        }
+        if (git.remote) print(`${git.remote}\t${git.remoteUrl}`);
+        return true;
+      }
+      case "push": {
+        if (!git.initialized) {
+          print("fatal: not a git repository", "term-err");
+          return false;
+        }
+        if (!git.remote) {
+          print("fatal: No configured push destination.", "term-err");
+          return false;
+        }
+        if (git.commits.length === 0) {
+          print("error: failed to push some refs — you have no commits yet", "term-err");
+          return false;
+        }
+        if (git.pushed >= git.commits.length) {
+          print("Everything up-to-date");
+          return true;
+        }
+        git.pushed = git.commits.length;
+        print(`Enumerating objects: ${git.commits.length + 1}, done.`);
+        print(`To ${git.remoteUrl}`);
+        print(" * [new branch]      main -> main");
+        return true;
+      }
+      case "config": {
+        const i = rest.indexOf("user.name");
+        const j = rest.indexOf("user.email");
+        if (i !== -1 && rest[i + 1]) {
+          git.userName = rest[i + 1];
+          return true;
+        }
+        if (j !== -1 && rest[j + 1]) {
+          git.userEmail = rest[j + 1];
+          return true;
+        }
+        print('usage: git config --global user.name "Your Name" / user.email "you@example.com"', "term-err");
+        return false;
+      }
+      default:
+        print(`git: '${sub}' is not a git command in this simulator`, "term-err");
+        return false;
+    }
   }
 
   const CHECKS: Record<string, () => boolean> = {
@@ -406,6 +638,24 @@ const t = UI[lang].practice;
       return !!n && n.type === "file" && n.content.trim().length > 0;
     },
     m8: () => cwd.length === 0,
+    /* simulated-git missions */
+    g1: () => cwd.join("/") === "learning-log",
+    g2: () => git.initialized && git.repoRoot === "learning-log",
+    g3: () => {
+      const n = getNode("~/learning-log/readme.md");
+      return !!n && n.type === "file" && n.content.trim().length > 0;
+    },
+    g4: () => !!last && last.name === "git" && last.args[0] === "status" && last.ok,
+    g5: () => git.staged.has("learning-log/readme.md"),
+    g6: () => git.commits.length >= 1,
+    g7: () => {
+      if (git.commits.length < 2) return false;
+      const a = git.commits[git.commits.length - 2].snap;
+      const b = git.commits[git.commits.length - 1].snap;
+      return Object.keys(b).some((k) => b[k] !== a[k]);
+    },
+    g8: () =>
+      git.remote === "origin" && git.commits.length >= 1 && git.pushed >= git.commits.length,
   };
 
   function afterCommand(): void {
@@ -481,6 +731,7 @@ const t = UI[lang].practice;
     histIdx = -1;
     last = null;
     allDoneShown = false;
+    git = gitEmpty();
     out.innerHTML = "";
     missionEls.forEach((el, i) => {
       delete el.dataset.done;
@@ -491,7 +742,12 @@ const t = UI[lang].practice;
     print("reset — type help to list commands", "term-info");
   });
 
-  print("welcome to the practice terminal — nothing here is real, break everything you want", "term-info");
+  print(
+    SIM === "git"
+      ? "welcome — this terminal has a fake git inside. nothing is real; break everything you want"
+      : "welcome to the practice terminal — nothing here is real, break everything you want",
+    "term-info",
+  );
   print("type help to list commands", "term-info");
   promptEl.textContent = promptText();
   input.focus();

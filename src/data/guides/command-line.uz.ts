@@ -5,6 +5,7 @@ export const guideCommandLineUz: Guide = {
   title: "Buyruqlar satri — sekin va halol qilib",
   intro:
     "Bu qoʻllanma 1-haftaning eng qiyin mavzusini sekin oʻrganadi: terminal aslida nima, har bir buyruq nima qiladi, Windows va Linux qanday farq qiladi va eng muhimi — uni ishlatish qanday tuyuladi. Yonida haqiqiy terminalni ochib oʻqing, keyin simulyatorda mashq qiling va testni yeching.",
+  week: "01-setup-terminal",
   sections: [
     {
       heading: "1. Terminal aslida nima",

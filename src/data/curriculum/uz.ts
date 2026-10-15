@@ -78,6 +78,7 @@ export const curriculumUz: Curriculum = {
       title: "Git & GitHub: portfelingiz bugun boshlanadi",
       phase: "foundations",
       why: "Bu haftadan boshlab yozgan har bir qator kodingiz ommaviy GitHub repozitoriyaga commit qilinadi. Yaʼni hali yaxshi dasturlashni bilmaganingizda ham portfelingiz oʻsishni boshlaydi.",
+      guide: "git",
       objectives: [
         "Git repozitoriya yaratish, commit qilish va GitHubʼga push qilish.",
         "Har bir repozitoriya uchun tushunarli README.md yozish.",

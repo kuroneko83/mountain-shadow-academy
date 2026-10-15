@@ -5,6 +5,7 @@ export const guideCommandLineEn: Guide = {
   title: "The command line, slowly and honestly",
   intro:
     "This guide takes Week 1's hardest topic and goes through it slowly: what the terminal actually is, what each command really does, how Windows and Linux differ, and — most importantly — how it feels to use one. Read it with a real terminal open next to it, then practice in the simulator and take the quiz.",
+  week: "01-setup-terminal",
   sections: [
     {
       heading: "1. What the terminal actually is",

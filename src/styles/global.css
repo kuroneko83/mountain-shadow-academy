@@ -850,3 +850,19 @@ td:nth-child(n+2) {
   border-left: 3px solid var(--p3);
   padding-left: 0.8rem;
 }
+
+.guide-week-link {
+  display: inline-block;
+  margin-top: 0.75rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-decoration: none;
+  border: 1px solid var(--p1);
+  border-radius: 999px;
+  padding: 0.25rem 0.9rem;
+  background: var(--p1-soft);
+}
+
+.guide-week-link:hover {
+  border-color: var(--p1);
+}

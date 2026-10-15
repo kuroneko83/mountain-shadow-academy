@@ -5,6 +5,7 @@ export const guideCommandLineJa: Guide = {
   title: "コマンドラインを、ゆっくり、丁寧に",
   intro:
     "このガイドは第1週で一番難しいテーマを、ゆっくり掘り下げます：ターミナルとは何か、各コマンドが実際に何をするか、WindowsとLinuxの違い、そして一番大事な「使っている感覚」。本物のターミナルを開いたまま読み、その後シミュレーターで練習し、クイズで確認してください。",
+  week: "01-setup-terminal",
   sections: [
     {
       heading: "1. ターミナルとは実際何か",

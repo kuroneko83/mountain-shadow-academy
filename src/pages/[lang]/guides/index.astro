@@ -4,6 +4,7 @@ import { LANGS } from "../../../data/types";
 import type { Lang } from "../../../data/types";
 import { UI } from "../../../data/ui";
 import { getGuides } from "../../../data/guides";
+import { getWeek } from "../../../data";
 import { href } from "../../../utils";
 
 export function getStaticPaths() {
@@ -22,13 +23,21 @@ const guides = getGuides(lang);
 
   <div class="week-grid" style="margin-top: 1.5rem;">
     {
-      guides.map((g) => (
+      guides.map((g) => {
+        const w = g.week ? getWeek(lang, g.week) : undefined;
+        return (
         <a class="card week-card" href={href(`/${lang}/guides/${g.slug}/`)}>
           <span class="tag">{t.guidesPage.readLabel}</span>
           <h3>{g.title}</h3>
+          {w && (
+            <p>
+              {t.guidesPage.forWeek.replace("{n}", w.slug.slice(0, 2))} — {w.title}
+            </p>
+          )}
           <p>{g.intro}</p>
         </a>
-      ))
+        );
+      })
     }
   </div>
 </Base>

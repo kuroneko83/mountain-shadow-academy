@@ -1,9 +1,9 @@
 /**
  * Functional test for the TerminalSim component logic.
  * Extracts the <script> from TerminalSim.astro, runs it against a fake DOM,
- * and simulates the full mission session end-to-end.
+ * and simulates full mission sessions for both sims (command-line and git).
  *
- * Run: node scripts/sim-terminal.test.mjs
+ * Run: node scripts/sim-terminal.test.mjs   (or: npm run test)
  */
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
@@ -23,72 +23,53 @@ if (!scriptRaw) {
 // the component script is TypeScript — strip types before running it in Node
 const script = transformSync(scriptRaw, { loader: "ts", format: "cjs" }).code;
 
-/* ---------- fake DOM ---------- */
+/* ---------- fake DOM, one instance per sim ---------- */
 
-const printedLines = [];
-
-function makeMission(id) {
-  return {
+function makeSim(sim, missionIds) {
+  const printedLines = [];
+  const missions = missionIds.map((id) => ({
     dataset: { mission: id },
     querySelector: () => ({ removeAttribute: () => {} }),
+  }));
+  const screen = { scrollTop: 0, scrollHeight: 0, addEventListener: () => {} };
+  const out = { appendChild: (d) => printedLines.push(d.textContent), parentElement: screen };
+  const input = {
+    value: "",
+    addEventListener: (evt, handler) => {
+      if (evt === "keydown") input._keydown = handler;
+    },
+    focus: () => {},
   };
-}
+  const app = {
+    dataset: {
+      sim,
+      missionComplete: "Mission {n} complete!",
+      missionsDone: "ALL DONE",
+      freePlay: "free play",
+    },
+    querySelectorAll: (sel) => (sel === ".mission" ? missions : []),
+  };
+  const promptEl = { textContent: "" };
+  globalThis.document = {
+    getElementById: (id) =>
+      ({
+        "term-app": app,
+        "term-out": out,
+        "term-in": input,
+        "term-prompt": promptEl,
+        "term-reset": { addEventListener: () => {} },
+        "term-screen": screen,
+      })[id] ?? null,
+    createElement: () => ({ className: "", textContent: "" }),
+  };
 
-const missions = Array.from({ length: 8 }, (_, i) => makeMission(`m${i + 1}`));
+  new Function(script)();
 
-const screenState = { scrollTop: 0, scrollHeight: 0 };
-const outEl = {
-  appendChild: (d) => printedLines.push(d.textContent),
-  parentElement: screenState,
-};
-const screenEl = { scrollTop: 0, scrollHeight: 0, addEventListener: () => {} };
-
-const inputEl = {
-  value: "",
-  addEventListener: (evt, handler) => {
-    if (evt === "keydown") inputEl._keydown = handler;
-  },
-  focus: () => {},
-};
-
-const app = {
-  dataset: {
-    missionComplete: "Mission {n} complete!",
-    missionsDone: "ALL DONE",
-    freePlay: "free play",
-  },
-  querySelectorAll: (sel) => (sel === ".mission" ? missions : []),
-};
-
-const promptEl = { textContent: "" };
-const resetBtn = { addEventListener: () => {} };
-
-globalThis.document = {
-  getElementById: (id) =>
-    ({
-      "term-app": app,
-      "term-out": outEl,
-      "term-in": inputEl,
-      "term-prompt": promptEl,
-      "term-reset": resetBtn,
-      "term-screen": screenEl,
-    })[id] ?? null,
-  createElement: () => ({ className: "", textContent: "" }),
-};
-
-/* ---------- run the component script ---------- */
-
-new Function(script)();
-
-/* ---------- simulate a session ---------- */
-
-function type(line) {
-  inputEl.value = line;
-  inputEl._keydown({ key: "Enter", preventDefault: () => {} });
-}
-
-function lastLine() {
-  return printedLines[printedLines.length - 1] ?? "";
+  const type = (line) => {
+    input.value = line;
+    input._keydown({ key: "Enter", preventDefault: () => {} });
+  };
+  return { type, missions, printedLines, prompt: promptEl };
 }
 
 const failures = [];
@@ -96,46 +77,108 @@ function expect(cond, label) {
   if (!cond) failures.push(label);
 }
 
-const session = [
-  "pwd",
-  "ls",
-  "cd projects",
-  "mkdir data",
-  "mkdir data/scripts",
-  "echo learning log > notes.txt", // deliberately wrong place (still in projects)
-  "rm notes.txt", // clean up
-  "cd data/scripts",
-  "echo learning log > notes.txt",
-  "cat notes.txt",
-  "cd ~",
-];
+/* ---------- session 1: command-line sim ---------- */
 
-session.forEach(type);
+{
+  const ids = ["m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8"];
+  const s = makeSim("command-line", ids);
 
-const doneCount = missions.filter((m) => m.dataset.done).length;
-expect(doneCount === 8, `all 8 missions complete (got ${doneCount})`);
-expect(
-  printedLines.some((l) => l.includes("ALL DONE")),
-  "final all-done message printed",
-);
-expect(promptEl.textContent === "~ $", `prompt back at home (got '${promptEl.textContent}')`);
-expect(
-  printedLines.some((l) => l === "learning log"),
-  "cat printed the file content",
-);
+  [
+    "pwd",
+    "ls",
+    "cd projects",
+    "mkdir data",
+    "mkdir data/scripts",
+    "echo learning log > notes.txt", // deliberately wrong place (still in projects)
+    "rm notes.txt", // clean up
+    "cd data/scripts",
+    "echo learning log > notes.txt",
+    "cat notes.txt",
+    "cd ~",
+    "frobnicate", // error-path sanity
+  ].forEach(s.type);
 
-// error-path sanity: unknown command
-type("frobnicate");
-expect(
-  printedLines.some((l) => l.includes("command not found")),
-  "unknown command handled",
-);
-
-// mission-complete messages should have fired for 1..8
-for (let i = 1; i <= 8; i++) {
+  const done = s.missions.filter((m) => m.dataset.done).length;
+  expect(done === 8, `[command-line] all 8 missions complete (got ${done})`);
+  expect(s.printedLines.some((l) => l.includes("ALL DONE")), "[command-line] all-done message");
+  expect(s.prompt.textContent === "~ $", `[command-line] prompt back at home (got '${s.prompt.textContent}')`);
+  expect(s.printedLines.some((l) => l === "learning log"), "[command-line] cat printed file content");
   expect(
-    printedLines.some((l) => l === `Mission ${i} complete!`),
-    `mission ${i} completion message`,
+    s.printedLines.some((l) => l.includes("command not found")),
+    "[command-line] unknown command handled",
+  );
+  for (let i = 1; i <= 8; i++) {
+    expect(
+      s.printedLines.some((l) => l === `Mission ${i} complete!`),
+      `[command-line] mission ${i} completion message`,
+    );
+  }
+}
+
+/* ---------- session 2: git sim ---------- */
+
+{
+  const ids = ["g1", "g2", "g3", "g4", "g5", "g6", "g7", "g8"];
+  const s = makeSim("git", ids);
+
+  [
+    "mkdir learning-log",
+    "cd learning-log",
+    "git init",
+    "echo learning log > readme.md",
+    "git status", // untracked
+    "git add readme.md",
+    'git commit -m "add readme"', // first try: identity error (expected)
+    'git config --global user.name "Test User"',
+    'git config --global user.email "test@example.com"',
+    'git commit -m "add readme"',
+    "echo day 2 >> readme.md",
+    "git add .",
+    'git commit -m "day 2"',
+    "git log",
+    "git remote add origin https://github.com/you/learning-log.git",
+    "git push -u origin main",
+  ].forEach(s.type);
+
+  const done = s.missions.filter((m) => m.dataset.done).length;
+  expect(done === 8, `[git] all 8 missions complete (got ${done})`);
+  expect(s.printedLines.some((l) => l.includes("ALL DONE")), "[git] all-done message");
+  expect(
+    s.printedLines.some((l) => l.includes("Please tell me who you are")),
+    "[git] identity error on first commit",
+  );
+  expect(
+    s.printedLines.some((l) => l === "Untracked files:"),
+    "[git] status shows untracked section",
+  );
+  expect(
+    s.printedLines.some((l) => l.includes("add readme")),
+    "[git] commit message recorded",
+  );
+  expect(
+    s.printedLines.some((l) => /^\w{7}  day 2$/.test(l)) &&
+      s.printedLines.some((l) => /^\w{7}  add readme$/.test(l)),
+    "[git] log lists both commits",
+  );
+  expect(
+    s.printedLines.some((l) => l.includes("main -> main")),
+    "[git] push output",
+  );
+}
+
+/* ---------- session 3: git error paths ---------- */
+
+{
+  const ids = ["g1"];
+  const s = makeSim("git", ids);
+  ["git status", "git add .", "git commit -m x", "git push", "git frobnicate"].forEach(s.type);
+  expect(
+    s.printedLines.some((l) => l.includes("fatal: not a git repository")),
+    "[git errors] status outside a repo",
+  );
+  expect(
+    s.printedLines.some((l) => l.includes("is not a git command")),
+    "[git errors] unknown git subcommand",
   );
 }
 
@@ -144,4 +187,4 @@ if (failures.length) {
   failures.forEach((f) => console.error(" - " + f));
   process.exit(1);
 }
-console.log("PASS: terminal simulator session — all 8 missions, output, prompt, errors");
+console.log("PASS: command-line session (8 missions) + git session (8 missions) + git error paths");

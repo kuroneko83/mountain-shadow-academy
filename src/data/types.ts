@@ -68,6 +68,7 @@ export interface Guide {
   slug: string;
   title: string;
   intro: string;
+  week?: string; // slug of the week this guide serves, e.g. "01-setup-terminal"
   sections: GuideSection[];
   cheatSheet?: { heading: string; rows: CheatRow[] };
   missions: Mission[];

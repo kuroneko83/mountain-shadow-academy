@@ -77,6 +77,7 @@ export const curriculumEn: Curriculum = {
       title: "Git & GitHub: your portfolio starts today",
       phase: "foundations",
       why: "From this week on, every line of code you write will be committed to a public GitHub repository. This means your portfolio starts growing from day one — before you even know how to program well.",
+      guide: "git",
       objectives: [
         "Create a Git repository, make commits, and push to GitHub.",
         "Write a clear README.md for each repository.",

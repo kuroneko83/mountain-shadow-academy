@@ -4,6 +4,7 @@ import { LANGS } from "../../../data/types";
 import type { Lang } from "../../../data/types";
 import { UI } from "../../../data/ui";
 import { getGuides, getGuide, GUIDE_SLUGS } from "../../../data/guides";
+import { getWeek } from "../../../data";
 import { href } from "../../../utils";
 import TerminalSim from "../../../components/TerminalSim.astro";
 import Quiz from "../../../components/Quiz.astro";
@@ -21,6 +22,9 @@ const guide = getGuide(lang, slug);
 if (!guide) {
   return Astro.redirect(href(`/${lang}/guides/`));
 }
+
+const sim = guide.slug === "git" ? "git" : "command-line";
+const servedWeek = guide.week ? getWeek(lang, guide.week) : undefined;
 ---
 
 <Base lang={lang} title={guide.title} description={guide.intro}>
@@ -30,6 +34,16 @@ if (!guide) {
     <p class="eyebrow">{t.guidesPage.lessonLabel}</p>
     <h1>{guide.title}</h1>
     <p class="why">{guide.intro}</p>
+    {
+      servedWeek && (
+        <a
+          class="guide-week-link"
+          href={href(`/${lang}/week/${servedWeek.slug}/`)}
+        >
+          {t.guidesPage.forWeek.replace("{n}", servedWeek.slug.slice(0, 2))} — {servedWeek.title} →
+        </a>
+      )
+    }
   </div>
 
   {
@@ -92,7 +106,7 @@ if (!guide) {
       <section class="guide-section">
         <h2>{t.practice.title}</h2>
         <p>{t.practice.intro}</p>
-        <TerminalSim lang={lang} missions={guide.missions} />
+        <TerminalSim lang={lang} missions={guide.missions} sim={sim} />
       </section>
     )
   }

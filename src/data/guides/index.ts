@@ -1,13 +1,16 @@
 import { guideCommandLineEn } from "./command-line.en";
 import { guideCommandLineJa } from "./command-line.ja";
 import { guideCommandLineUz } from "./command-line.uz";
-import type { Guide } from "./types";
-import type { Lang } from "./types";
+import { guideGitEn } from "./git.en";
+import { guideGitJa } from "./git.ja";
+import { guideGitUz } from "./git.uz";
+import type { Guide } from "../types";
+import type { Lang } from "../types";
 
 const GUIDES: Record<Lang, Guide[]> = {
-  en: [guideCommandLineEn],
-  ja: [guideCommandLineJa],
-  uz: [guideCommandLineUz],
+  en: [guideCommandLineEn, guideGitEn],
+  ja: [guideCommandLineJa, guideGitJa],
+  uz: [guideCommandLineUz, guideGitUz],
 };
 
 export function getGuides(lang: Lang): Guide[] {

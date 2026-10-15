@@ -51,6 +51,7 @@ export const UI: Record<Lang, UI> = {
       backToCurriculum: "All guides",
       lessonLabel: "Lesson",
       cheatLabel: "Cheat sheet — Windows vs Linux",
+      forWeek: "For Week {n}",
     },
     practice: {
       title: "Practice: simulated terminal",
@@ -133,6 +134,7 @@ export const UI: Record<Lang, UI> = {
       backToCurriculum: "ガイド一覧に戻る",
       lessonLabel: "レッスン",
       cheatLabel: "チートシート — Windows vs Linux",
+      forWeek: "第{n}週のガイド",
     },
     practice: {
       title: "練習：シミュレーションターミナル",
@@ -215,6 +217,7 @@ export const UI: Record<Lang, UI> = {
       backToCurriculum: "Qoʻllanmalar roʻyxati",
       lessonLabel: "Darslik",
       cheatLabel: "Tezkor jadval — Windows va Linux",
+      forWeek: "{n}-hafta uchun",
     },
     practice: {
       title: "Mashq: simulyatsiya terminali",
