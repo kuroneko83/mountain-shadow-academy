@@ -120,6 +120,7 @@ export const curriculumUz: Curriculum = {
       title: "Python I: qiymatlar, matn, qarorlar",
       phase: "foundations",
       why: "Bular — kelajakda yozadigan har bir dasturingizning atomlari: qiymat saqlash, matn qurish, qaror qabul qilish. Bu yerda shoshilmang — poydevor boʻsh boʻlsa, keyin bir necha hafta yoʻqotasiz.",
+      guide: "python-basics",
       objectives: [
         "Oʻzgaruvchi yaratish va asosiy turlarni ishlatish: int, float, str, bool.",
         "f-string bilan matn qurish va foydalanuvchidan kirish olish.",

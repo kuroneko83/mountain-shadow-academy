@@ -888,3 +888,60 @@ td:nth-child(n+2) {
   color: var(--ink-soft);
   font-size: 0.95rem;
 }
+
+/* ---------- python sim ---------- */
+
+.py-screen {
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+}
+
+#py-code {
+  width: 100%;
+  min-height: 13rem;
+  resize: vertical;
+  background: #10161d;
+  color: #d7e3ee;
+  border: none;
+  outline: none;
+  padding: 0.9rem 1rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.88rem;
+  line-height: 1.6;
+  caret-color: #7fd490;
+}
+
+#py-code::placeholder {
+  color: #56657a;
+}
+
+.py-runbar {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 0.5rem 1rem;
+  background: #1a222d;
+  border-top: 1px solid #263140;
+  border-bottom: 1px solid #263140;
+}
+
+.py-run-btn {
+  background: #1f6f5c;
+  color: #eaf6f0;
+  border: none;
+  border-radius: 7px;
+  padding: 0.4rem 1.1rem;
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.py-run-btn:hover {
+  background: #2a8a70;
+}
+
+.py-output {
+  min-height: 9rem;
+  max-height: 20rem;
+}

@@ -7,6 +7,7 @@ import { getGuides, getGuide, GUIDE_SLUGS } from "../../../data/guides";
 import { getWeek } from "../../../data";
 import { href } from "../../../utils";
 import TerminalSim from "../../../components/TerminalSim.astro";
+import PythonSim from "../../../components/PythonSim.astro";
 import Quiz from "../../../components/Quiz.astro";
 
 export function getStaticPaths() {
@@ -118,7 +119,13 @@ const servedWeek = guide.week ? getWeek(lang, guide.week) : undefined;
       <section class="guide-section">
         <h2>{t.practice.title}</h2>
         <p>{t.practice.intro}</p>
-        <TerminalSim lang={lang} missions={guide.missions} sim={sim} />
+        {
+          guide.slug === "python-basics" ? (
+            <PythonSim lang={lang} missions={guide.missions} />
+          ) : (
+            <TerminalSim lang={lang} missions={guide.missions} sim={sim} />
+          )
+        }
       </section>
     )
   }

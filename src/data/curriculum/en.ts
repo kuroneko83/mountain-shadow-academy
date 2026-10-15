@@ -119,6 +119,7 @@ export const curriculumEn: Curriculum = {
       title: "Python I: values, text, decisions",
       phase: "foundations",
       why: "These are the atoms of every program you will ever write: storing values, shaping text, and making decisions. SLOW DOWN here — a shaky foundation costs you weeks later.",
+      guide: "python-basics",
       objectives: [
         "Create variables and use the basic types: int, float, str, bool.",
         "Build text with f-strings and read input from the user.",

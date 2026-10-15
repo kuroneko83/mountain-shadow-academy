@@ -1,0 +1,970 @@
+---
+import { UI } from "../data/ui";
+import type { Lang, Mission } from "../data/types";
+
+interface Props {
+  lang: Lang;
+  missions: Mission[];
+}
+
+const { lang, missions } = Astro.props;
+const t = UI[lang].practice;
+const runLabel =
+  lang === "ja" ? "実行" : lang === "uz" ? "Ishga tushirish" : "Run";
+---
+
+<div
+  class="term-wrap"
+  id="py-app"
+  data-mission-complete={t.missionComplete}
+  data-missions-done={t.missionsDone}
+>
+  <div class="term-missions">
+    <h3>{t.missionsLabel}</h3>
+    <ol class="mission-list">
+      {
+        missions.map((m, i) => (
+          <li class="mission" data-mission={m.id} data-active={i === 0 ? "true" : undefined}>
+            <p class="mission-prompt">{m.prompt}</p>
+            <details class="mission-hint">
+              <summary aria-label="hint">?</summary>
+              <p>{m.hint}</p>
+            </details>
+          </li>
+        ))
+      }
+    </ol>
+    <p class="mission-help">{t.helpHint}</p>
+    <button class="term-reset-btn" id="py-reset" type="button">{t.reset}</button>
+  </div>
+
+  <div class="term-screen py-screen" id="py-screen">
+    <div class="term-bar">
+      <span class="term-dot"></span>
+      <span class="term-dot"></span>
+      <span class="term-dot"></span>
+    </div>
+    <textarea
+      id="py-code"
+      spellcheck="false"
+      autocapitalize="off"
+      autocomplete="off"
+      aria-label="Python code"
+      placeholder="rate = 150.0&#10;yen = 30000&#10;print(f&quot;{yen} JPY = {yen / rate} USD&quot;)"></textarea>
+    <div class="py-runbar">
+      <button class="py-run-btn" id="py-run" type="button">▶ {runLabel}</button>
+    </div>
+    <div class="term-output py-output" id="py-out"></div>
+  </div>
+</div>
+
+<script>
+  const app = document.getElementById("py-app")!;
+  const out = document.getElementById("py-out")!;
+  const codeArea = document.getElementById("py-code") as HTMLTextAreaElement;
+  const runBtn = document.getElementById("py-run") as HTMLButtonElement;
+  const resetBtn = document.getElementById("py-reset") as HTMLButtonElement;
+  const missionEls = Array.from(app.querySelectorAll<HTMLElement>(".mission"));
+
+  const missionCompleteTpl = app.dataset.missionComplete ?? "Mission {n} complete!";
+  const missionsDoneMsg = app.dataset.missionsDone ?? "";
+
+  /* ================= mini-python interpreter ================= */
+
+  class PyError extends Error {
+    name: string;
+    lineNo: number | null;
+    constructor(pyName: string, msg: string, lineNo: number | null = null) {
+      super(msg);
+      this.name = pyName;
+      this.lineNo = lineNo;
+    }
+  }
+
+  type Tok =
+    | { t: "num"; v: number; isFloat: boolean }
+    | { t: "str"; v: string }
+    | { t: "fstr"; raw: string }
+    | { t: "name"; v: string }
+    | { t: "op"; v: string };
+
+  function tokenize(src: string, lineNo: number): Tok[] {
+    const toks: Tok[] = [];
+    let i = 0;
+    while (i < src.length) {
+      const ch = src[i]!;
+      if (/\s/.test(ch)) {
+        i++;
+        continue;
+      }
+      if (/[0-9]/.test(ch) || (ch === "." && /[0-9]/.test(src[i + 1] ?? ""))) {
+        let j = i;
+        while (j < src.length && /[0-9]/.test(src[j]!)) j++;
+        let isFloat = false;
+        if (src[j] === ".") {
+          isFloat = true;
+          j++;
+          while (j < src.length && /[0-9]/.test(src[j]!)) j++;
+        }
+        if (src[j] === "e" || src[j] === "E") {
+          isFloat = true;
+          j++;
+          if (src[j] === "-" || src[j] === "+") j++;
+          while (j < src.length && /[0-9]/.test(src[j]!)) j++;
+        }
+        const text = src.slice(i, j);
+        toks.push({ t: "num", v: Number(text), isFloat });
+        i = j;
+        continue;
+      }
+      if (ch === "f" && (src[i + 1] === '"' || src[i + 1] === "'")) {
+        const quote = src[i + 1]!;
+        let j = i + 2;
+        while (j < src.length && src[j] !== quote) j++;
+        if (j >= src.length) throw new PyError("SyntaxError", "unterminated f-string", lineNo);
+        toks.push({ t: "fstr", raw: src.slice(i + 2, j) });
+        i = j + 1;
+        continue;
+      }
+      if (ch === '"' || ch === "'") {
+        let j = i + 1;
+        let val = "";
+        while (j < src.length && src[j] !== ch) {
+          if (src[j] === "\\") {
+            const next = src[j + 1]!;
+            val += next === "n" ? "\n" : next === "t" ? "\t" : next;
+            j += 2;
+          } else {
+            val += src[j];
+            j++;
+          }
+        }
+        if (j >= src.length) throw new PyError("SyntaxError", "unterminated string", lineNo);
+        toks.push({ t: "str", v: val });
+        i = j + 1;
+        continue;
+      }
+      if (/[A-Za-z_]/.test(ch)) {
+        let j = i;
+        while (j < src.length && /[A-Za-z0-9_]/.test(src[j]!)) j++;
+        toks.push({ t: "name", v: src.slice(i, j) });
+        i = j;
+        continue;
+      }
+      const three = src.slice(i, i + 3);
+      const two = src.slice(i, i + 2);
+      if (two === "**" || two === "//" || two === "==" || two === "!=" || two === "<=" || two === ">=") {
+        toks.push({ t: "op", v: two });
+        i += 2;
+        continue;
+      }
+      if ("+-*/%<>=().,:[]".includes(ch)) {
+        toks.push({ t: "op", v: ch });
+        i++;
+        continue;
+      }
+      if (three === "...") {
+        i += 3;
+        continue;
+      }
+      throw new PyError("SyntaxError", `invalid character '${ch}'`, lineNo);
+    }
+    return toks;
+  }
+
+  /* strip comments outside of strings */
+  function stripComment(line: string): string {
+    let inStr: string | null = null;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i]!;
+      if (inStr) {
+        if (ch === "\\") i++;
+        else if (ch === inStr) inStr = null;
+      } else if (ch === '"' || ch === "'") {
+        inStr = ch;
+      } else if (ch === "#") {
+        return line.slice(0, i);
+      }
+    }
+    return line;
+  }
+
+  /* ---------- statement AST ---------- */
+
+  type Expr = any;
+  interface Stmt {
+    kind: "assign" | "expr" | "if";
+    lineNo: number;
+    name?: string;
+    expr?: Expr;
+    clauses?: { cond: Expr; body: Stmt[] }[];
+    orelse?: Stmt[];
+  }
+
+  function parseProgram(src: string): Stmt[] {
+    const raw = src.split("\n");
+    const lines: { indent: number; toks: Tok[]; lineNo: number }[] = [];
+    raw.forEach((l, idx) => {
+      const text = stripComment(l);
+      if (!text.trim()) return;
+      const indent = text.match(/^[ \t]*/)![0].replace(/\t/g, "    ").length;
+      const toks = tokenize(text.trim(), idx + 1);
+      if (toks.length) lines.push({ indent, toks, lineNo: idx + 1 });
+    });
+    if (lines.length === 0) return [];
+    const [stmts] = parseBlock(lines, 0, lines[0]!.indent);
+    return stmts;
+  }
+
+  function parseBlock(
+    lines: { indent: number; toks: Tok[]; lineNo: number }[],
+    start: number,
+    indent: number,
+  ): [Stmt[], number] {
+    const stmts: Stmt[] = [];
+    let i = start;
+    while (i < lines.length && lines[i]!.indent === indent) {
+      const ln = lines[i]!;
+      const first = ln.toks[0]!;
+      if (first.t === "name" && (first.v === "if" || first.v === "elif" || first.v === "else")) {
+        const result = parseIf(lines, i, indent);
+        stmts.push(result.stmt);
+        i = result.next;
+        continue;
+      }
+      if (first.t === "name" && (first.v === "while" || first.v === "for")) {
+        throw new PyError(
+          "SimNote",
+          `${first.v} loops arrive in Week 4 — this simulator covers Week 3: variables, strings, f-strings, if/elif/else`,
+          ln.lineNo,
+        );
+      }
+      stmts.push(parseSimple(ln));
+      i++;
+    }
+    if (i < lines.length && lines[i]!.indent > indent) {
+      throw new PyError("IndentationError", "unexpected indent", lines[i]!.lineNo);
+    }
+    return [stmts, i];
+  }
+
+  function parseIf(
+    lines: { indent: number; toks: Tok[]; lineNo: number }[],
+    i: number,
+    indent: number,
+  ): { stmt: Stmt; next: number } {
+    const clauses: { cond: Expr; body: Stmt[] }[] = [];
+    let orelse: Stmt[] | undefined;
+    let next = i;
+    while (next < lines.length && lines[next]!.indent === indent) {
+      const ln = lines[next]!;
+      const first = ln.toks[0]!;
+      if (!(first.t === "name" && (first.v === "if" || first.v === "elif" || first.v === "else")))
+        break;
+      if (first.v === "else") {
+        if (ln.toks[1]?.t !== "op" || ln.toks[1]!.v !== ":")
+          throw new PyError("SyntaxError", "expected ':' after else", ln.lineNo);
+        if (ln.toks.length > 2)
+          throw new PyError("SyntaxError", "else: cannot have a condition — use elif", ln.lineNo);
+        const body = childBlock(lines, next + 1, indent, ln.lineNo);
+        orelse = body.stmts;
+        next = body.next;
+        break;
+      }
+      const parser = new ExprParser(ln.toks.slice(1), ln.lineNo, true);
+      const cond = parser.parseOr();
+      const ctok = parser.cur();
+      if (!ctok || ctok.t !== "op" || ctok.v !== ":")
+        throw new PyError(
+          "SyntaxError",
+          `expected ':' at the end of the ${first.v} line`,
+          ln.lineNo,
+        );
+      parser.pos++;
+      if (!parser.done())
+        throw new PyError("SyntaxError", "invalid syntax", ln.lineNo);
+      const body = childBlock(lines, next + 1, indent, ln.lineNo);
+      clauses.push({ cond, body: body.stmts });
+      next = body.next;
+    }
+    if (clauses.length === 0) throw new PyError("SyntaxError", "invalid syntax");
+    return { stmt: { kind: "if", lineNo: lines[i]!.lineNo, clauses, orelse }, next };
+  }
+
+  function childBlock(
+    lines: { indent: number; toks: Tok[]; lineNo: number }[],
+    i: number,
+    parentIndent: number,
+    lineNo: number,
+  ): { stmts: Stmt[]; next: number } {
+    if (i >= lines.length || lines[i]!.indent <= parentIndent) {
+      throw new PyError("IndentationError", "expected an indented block", lineNo);
+    }
+    const [stmts, next] = parseBlock(lines, i, lines[i]!.indent);
+    return { stmts, next };
+  }
+
+  function parseSimple(ln: { toks: Tok[]; lineNo: number }): Stmt {
+    const toks = ln.toks;
+    if (toks[1] && toks[1].t === "op" && toks[1].v === "=") {
+      if (toks[0].t !== "name")
+        throw new PyError("SyntaxError", "cannot assign to this", ln.lineNo);
+      if (toks.length > 2 && toks[2].t === "op" && toks[2].v === "=")
+        throw new PyError("SyntaxError", "invalid syntax — use == to compare", ln.lineNo);
+      return {
+        kind: "assign",
+        lineNo: ln.lineNo,
+        name: toks[0].v,
+        expr: parseExprTokens(toks.slice(2), ln.lineNo, false),
+      };
+    }
+    return { kind: "expr", lineNo: ln.lineNo, expr: parseExprTokens(toks, ln.lineNo, false) };
+  }
+
+  /* ---------- expression parser (precedence climbing) ---------- */
+
+  function parseExprTokens(toks: Tok[], lineNo: number, stopAtColon: boolean): Expr {
+    const p = new ExprParser(toks, lineNo, stopAtColon);
+    const e = p.parseOr();
+    if (!p.done()) throw new PyError("SyntaxError", "invalid syntax", lineNo);
+    return e;
+  }
+
+  class ExprParser {
+    toks: Tok[];
+    pos = 0;
+    lineNo: number;
+    stopAtColon: boolean;
+    constructor(toks: Tok[], lineNo: number, stopAtColon: boolean) {
+      this.toks = toks;
+      this.lineNo = lineNo;
+      this.stopAtColon = stopAtColon;
+    }
+    cur(): Tok {
+      return this.toks[this.pos]!;
+    }
+    isOp(v: string): boolean {
+      const c = this.cur();
+      return !!c && c.t === "op" && c.v === v;
+    }
+    eat(v: string) {
+      if (!this.isOp(v)) throw new PyError("SyntaxError", "invalid syntax", this.lineNo);
+      this.pos++;
+    }
+    done(): boolean {
+      const c = this.cur();
+      if (!c) return true;
+      if (this.stopAtColon && c.t === "op" && c.v === ":") return true;
+      return false;
+    }
+    parseOr(): Expr {
+      let left = this.parseAnd();
+      while (this.cur()?.t === "name" && this.cur().v === "or") {
+        this.pos++;
+        left = { k: "bool", op: "or", left, right: this.parseAnd() };
+      }
+      return left;
+    }
+    parseAnd(): Expr {
+      let left = this.parseNot();
+      while (this.cur()?.t === "name" && this.cur().v === "and") {
+        this.pos++;
+        left = { k: "bool", op: "and", left, right: this.parseNot() };
+      }
+      return left;
+    }
+    parseNot(): Expr {
+      if (this.cur()?.t === "name" && this.cur().v === "not") {
+        this.pos++;
+        return { k: "not", operand: this.parseNot() };
+      }
+      return this.parseCompare();
+    }
+    parseCompare(): Expr {
+      let left = this.parseArith();
+      const ops = ["==", "!=", "<", "<=", ">", ">="];
+      const c = this.cur();
+      if (c && c.t === "op" && ops.includes(c.v)) {
+        this.pos++;
+        const right = this.parseArith();
+        left = { k: "cmp", op: c.v, left, right };
+      }
+      return left;
+    }
+    parseArith(): Expr {
+      let left = this.parseTerm();
+      while (this.isOp("+") || this.isOp("-")) {
+        const op = this.cur().v;
+        this.pos++;
+        left = { k: "bin", op, left, right: this.parseTerm() };
+      }
+      return left;
+    }
+    parseTerm(): Expr {
+      let left = this.parseUnary();
+      while (this.isOp("*") || this.isOp("/") || this.isOp("//") || this.isOp("%")) {
+        const op = this.cur().v;
+        this.pos++;
+        left = { k: "bin", op, left, right: this.parseUnary() };
+      }
+      return left;
+    }
+    parseUnary(): Expr {
+      if (this.isOp("-")) {
+        this.pos++;
+        return { k: "neg", operand: this.parseUnary() };
+      }
+      if (this.isOp("+")) {
+        this.pos++;
+        return this.parseUnary();
+      }
+      return this.parsePower();
+    }
+    parsePower(): Expr {
+      const base = this.parsePostfix();
+      if (this.isOp("**")) {
+        this.pos++;
+        return { k: "bin", op: "**", left: base, right: this.parseUnary() };
+      }
+      return base;
+    }
+    parsePostfix(): Expr {
+      let node = this.parseAtom();
+      for (;;) {
+        if (this.isOp("(")) {
+          this.pos++;
+          const args: Expr[] = [];
+          while (!this.isOp(")")) {
+            args.push(this.parseOr());
+            if (this.isOp(",")) this.pos++;
+            else break;
+          }
+          this.eat(")");
+          node = { k: "call", func: node, args };
+          continue;
+        }
+        if (this.isOp(".")) {
+          this.pos++;
+          const c = this.cur();
+          if (!c || c.t !== "name")
+            throw new PyError("SyntaxError", "invalid syntax", this.lineNo);
+          this.pos++;
+          node = { k: "method", obj: node, name: c.v };
+          continue;
+        }
+        if (this.isOp("[")) {
+          this.pos++;
+          const c = this.cur();
+          let lo: Expr | null = null;
+          let hi: Expr | null = null;
+          if (!this.isOp(":")) lo = this.parseOr();
+          if (this.isOp(":")) {
+            this.pos++;
+            if (!this.isOp("]")) hi = this.parseOr();
+            node = { k: "slice", obj: node, lo, hi };
+          } else {
+            if (lo === null)
+              throw new PyError("SyntaxError", "invalid syntax", this.lineNo);
+            node = { k: "index", obj: node, idx: lo };
+          }
+          this.eat("]");
+          continue;
+        }
+        break;
+      }
+      return node;
+    }
+    parseAtom(): Expr {
+      const c = this.cur();
+      if (!c) throw new PyError("SyntaxError", "invalid syntax", this.lineNo);
+      if (c.t === "num") {
+        this.pos++;
+        return { k: "num", v: c.v };
+      }
+      if (c.t === "str") {
+        this.pos++;
+        return { k: "str", v: c.v };
+      }
+      if (c.t === "fstr") {
+        this.pos++;
+        return { k: "fstr", raw: c.raw };
+      }
+      if (c.t === "name") {
+        this.pos++;
+        if (c.v === "True") return { k: "const", v: true };
+        if (c.v === "False") return { k: "const", v: false };
+        if (c.v === "None") return { k: "const", v: null };
+        return { k: "name", v: c.v };
+      }
+      if (c.t === "op" && c.v === "(") {
+        this.pos++;
+        const e = this.parseOr();
+        this.eat(")");
+        return e;
+      }
+      throw new PyError("SyntaxError", "invalid syntax", this.lineNo);
+    }
+  }
+
+  /* ---------- evaluation ---------- */
+
+  type Val = number | string | boolean | null;
+
+  function pyStr(v: Val): string {
+    if (typeof v === "boolean") return v ? "True" : "False";
+    if (v === null) return "None";
+    if (typeof v === "number") return String(v);
+    return v;
+  }
+
+  function pyTruth(v: Val): boolean {
+    if (v === null || v === false) return false;
+    if (v === true) return true;
+    if (typeof v === "number") return v !== 0;
+    if (typeof v === "string") return v.length > 0;
+    return true;
+  }
+
+  function typeName(v: Val): string {
+    if (typeof v === "boolean") return "bool";
+    if (v === null) return "NoneType";
+    if (typeof v === "number")
+      return Number.isInteger(v) ? "int" : "float";
+    return "str";
+  }
+
+  function applyMethod(obj: Val, name: string, args: Val[]): Val {
+    if (typeof obj !== "string")
+      throw new PyError(
+        "AttributeError",
+        `'${typeName(obj)}' object has no attribute '${name}'`,
+      );
+    switch (name) {
+      case "upper":
+        return obj.toUpperCase();
+      case "lower":
+        return obj.toLowerCase();
+      case "strip":
+        return obj.trim();
+      case "capitalize":
+        return obj.charAt(0).toUpperCase() + obj.slice(1).toLowerCase();
+      case "title":
+        return obj
+          .toLowerCase()
+          .split(" ")
+          .map((w) => (w ? w[0]!.toUpperCase() + w.slice(1) : w))
+          .join(" ");
+      case "replace": {
+        if (args.length !== 2)
+          throw new PyError("TypeError", "replace() takes exactly 2 arguments");
+        return obj.split(String(args[0])).join(String(args[1]));
+      }
+    }
+    throw new PyError(
+      "AttributeError",
+      `this simulator supports .upper() .lower() .strip() .title() .capitalize() .replace(a, b) — '${name}' comes later`,
+    );
+  }
+
+  function evalExpr(e: Expr, env: Record<string, Val>, flags: Set<string>): Val {
+    switch (e.k) {
+      case "num":
+      case "str":
+      case "const":
+        return e.v;
+      case "name": {
+        if (!(e.v in env))
+          throw new PyError("NameError", `name '${e.v}' is not defined`);
+        return env[e.v]!;
+      }
+      case "neg": {
+        const v = evalExpr(e.operand, env, flags);
+        if (typeof v !== "number")
+          throw new PyError("TypeError", `bad operand type for unary -: '${typeName(v)}'`);
+        return -v;
+      }
+      case "bool": {
+        const l = evalExpr(e.left, env, flags);
+        if (e.op === "and") return pyTruth(l) ? evalExpr(e.right, env, flags) : l;
+        return pyTruth(l) ? l : evalExpr(e.right, env, flags);
+      }
+      case "not":
+        return !pyTruth(evalExpr(e.operand, env, flags));
+      case "cmp": {
+        const l = evalExpr(e.left, env, flags);
+        const r = evalExpr(e.right, env, flags);
+        switch (e.op) {
+          case "==":
+            return l === r;
+          case "!=":
+            return l !== r;
+        }
+        if (typeof l !== typeof r)
+          throw new PyError(
+            "TypeError",
+            `'${e.op}' not supported between instances of '${typeName(l)}' and '${typeName(r)}'`,
+          );
+        switch (e.op) {
+          case "<":
+            return (l as any) < (r as any);
+          case "<=":
+            return (l as any) <= (r as any);
+          case ">":
+            return (l as any) > (r as any);
+          case ">=":
+            return (l as any) >= (r as any);
+        }
+        throw new PyError("SyntaxError", "invalid syntax");
+      }
+      case "bin": {
+        const l = evalExpr(e.left, env, flags);
+        const r = evalExpr(e.right, env, flags);
+        if (e.op === "+") {
+          if (typeof l === "number" && typeof r === "number") return l + r;
+          if (typeof l === "string" && typeof r === "string") return l + r;
+          if (typeof l === "string")
+            throw new PyError(
+              "TypeError",
+              `can only concatenate str (not "${typeName(r)}") to str`,
+            );
+          throw new PyError(
+            "TypeError",
+            `unsupported operand type(s) for +: '${typeName(l)}' and '${typeName(r)}'`,
+          );
+        }
+        if (e.op === "*") {
+          if (typeof l === "number" && typeof r === "number") return l * r;
+          if (typeof l === "string" && typeof r === "number")
+            return l.repeat(Math.max(0, r));
+          if (typeof l === "number" && typeof r === "string")
+            return r.repeat(Math.max(0, l));
+          throw new PyError(
+            "TypeError",
+            `can't multiply sequence by non-int of type '${typeName(r)}'`,
+          );
+        }
+        if (typeof l !== "number" || typeof r !== "number")
+          throw new PyError(
+            "TypeError",
+            `unsupported operand type(s) for ${e.op}: '${typeName(l)}' and '${typeName(r)}'`,
+          );
+        if ((e.op === "/" || e.op === "//") && r === 0)
+          throw new PyError("ZeroDivisionError", "division by zero");
+        switch (e.op) {
+          case "/":
+            return l / r;
+          case "//":
+            return Math.floor(l / r);
+          case "%":
+            return ((l % r) + r) % r;
+          case "**":
+            return Math.pow(l, r);
+        }
+        throw new PyError("SyntaxError", "invalid syntax");
+      }
+      case "fstr": {
+        flags.add("fstr");
+        let result = "";
+        let i = 0;
+        const raw: string = e.raw;
+        while (i < raw.length) {
+          if (raw[i] === "{") {
+            if (raw[i + 1] === "{") {
+              result += "{";
+              i += 2;
+              continue;
+            }
+            let j = i + 1;
+            let depth = 1;
+            let specIdx = -1;
+            while (j < raw.length) {
+              const ch = raw[j];
+              if (ch === "{") depth++;
+              else if (ch === "}") {
+                depth--;
+                if (depth === 0) break;
+              } else if (ch === ":" && depth === 1 && specIdx === -1) {
+                specIdx = j;
+              }
+              j++;
+            }
+            if (depth !== 0)
+              throw new PyError("SyntaxError", "unterminated f-string expression");
+            const endExpr = specIdx !== -1 ? specIdx : j;
+            const exprSrc = raw.slice(i + 1, endExpr);
+            const spec = specIdx !== -1 ? raw.slice(specIdx + 1, j) : "";
+            if (!exprSrc.trim())
+              throw new PyError("SyntaxError", "f-string: empty expression");
+            const subToks = tokenize(exprSrc, 0);
+            const sub = parseExprTokens(subToks, 0, false);
+            const v = evalExpr(sub, env, flags);
+            if (spec && /^\.\d+f$/.test(spec)) {
+              result += Number(v).toFixed(Number(spec.slice(1, -1)));
+            } else if (spec) {
+              throw new PyError(
+                "SimNote",
+                `format spec ':${spec}' — this simulator supports only .Nf (decimals)`,
+              );
+            } else {
+              result += pyStr(v as Val);
+            }
+            i = j + 1;
+            continue;
+          }
+          if (raw[i] === "}" && raw[i + 1] === "}") {
+            result += "}";
+            i += 2;
+            continue;
+          }
+          result += raw[i];
+          i++;
+        }
+        return result;
+      }
+      case "call": {
+        if (e.func.k === "method") {
+          const obj = evalExpr(e.func.obj, env, flags);
+          const margs = e.args.map((a: Expr) => evalExpr(a, env, flags));
+          return applyMethod(obj, e.func.name, margs);
+        }
+        const fname = e.func.k === "name" ? e.func.v : null;
+        const args = e.args.map((a: Expr) => evalExpr(a, env, flags));
+        if (fname === "print") {
+          throw { __print: args.map((a: Val) => pyStr(a)).join(" ") };
+        }
+        if (fname === "int") {
+          const a = args[0] as Val;
+          if (typeof a === "number") return Math.trunc(a);
+          if (typeof a === "string") {
+            const t = a.trim();
+            if (/^-?\d+$/.test(t)) return Number(t);
+            throw new PyError(
+              "ValueError",
+              `invalid literal for int() with base 10: '${a}'`,
+            );
+          }
+          if (typeof a === "boolean") return a ? 1 : 0;
+          throw new PyError("TypeError", "int() argument must be a string or a number");
+        }
+        if (fname === "float") {
+          const a = args[0] as Val;
+          if (typeof a === "number") return a;
+          if (typeof a === "string") {
+            const t = a.trim();
+            if (/^-?\d+(\.\d+)?$/.test(t)) return Number(t);
+            throw new PyError("ValueError", `could not convert string to float: '${a}'`);
+          }
+          throw new PyError("TypeError", "float() argument must be a string or a number");
+        }
+        if (fname === "str") return pyStr(args[0] as Val);
+        if (fname === "len") {
+          const a = args[0] as Val;
+          if (typeof a === "string") return a.length;
+          throw new PyError("TypeError", `object of type '${typeName(a)}' has no len()`);
+        }
+        if (fname === "round") {
+          const a = args[0] as Val;
+          if (typeof a !== "number") throw new PyError("TypeError", "round() needs a number");
+          const n = args.length > 1 ? (args[1] as number) : 0;
+          const f = Math.pow(10, n);
+          return Math.round(a * f) / f;
+        }
+        if (fname === "abs") {
+          const a = args[0] as Val;
+          if (typeof a !== "number") throw new PyError("TypeError", "abs() needs a number");
+          return Math.abs(a);
+        }
+        if (fname === "input") {
+          throw new PyError(
+            "SimNote",
+            "input() needs a human — in this simulator, assign values directly (rate = 150.0)",
+          );
+        }
+        if (fname !== null && fname in env && typeof env[fname] === "string") {
+          throw new PyError(
+            "TypeError",
+            `'${fname}' is a variable, not a function — did you mean print(${fname})?`,
+          );
+        }
+        throw new PyError("NameError", `name '${fname ?? "expression"}' is not defined`);
+      }
+      case "method": {
+        const obj = evalExpr(e.obj, env, flags);
+        return applyMethod(obj, e.name, []);
+      }
+      case "index": {
+        const obj = evalExpr(e.obj, env, flags);
+        const idx = evalExpr(e.idx, env, flags);
+        if (typeof obj === "string" && typeof idx === "number") {
+          const i2 = idx < 0 ? obj.length + idx : idx;
+          if (i2 < 0 || i2 >= obj.length)
+            throw new PyError("IndexError", "string index out of range");
+          return obj[i2]!;
+        }
+        throw new PyError("TypeError", "only strings can be indexed in this simulator");
+      }
+      case "slice": {
+        const obj = evalExpr(e.obj, env, flags);
+        if (typeof obj !== "string")
+          throw new PyError("TypeError", "only strings can be sliced in this simulator");
+        const lo = e.lo ? (evalExpr(e.lo, env, flags) as number) : 0;
+        const hi = e.hi ? (evalExpr(e.hi, env, flags) as number) : obj.length;
+        const lo2 = lo < 0 ? obj.length + lo : lo;
+        const hi2 = hi < 0 ? obj.length + hi : hi;
+        return obj.slice(Math.max(0, lo2), Math.max(0, hi2));
+      }
+    }
+    throw new PyError("SyntaxError", "invalid syntax");
+  }
+
+  /* values ever assigned to each variable, across all runs — lets missions
+     pass even when the program later changes a variable (like yen) */
+  let envSeen: Record<string, Set<string>> = {};
+
+  function exec(stmts: Stmt[], env: Record<string, Val>, flags: Set<string>, printed: string[]): void {
+    const runStmt = (list: Stmt[]) => {
+      for (const st of list) {
+        let res;
+        if (st.kind === "assign") {
+          const v = evalExpr(st.expr!, env, flags);
+          env[st.name!] = v;
+          (envSeen[st.name!] ??= new Set()).add(pyStr(v));
+          continue;
+        }
+        if (st.kind === "if") {
+          for (const cl of st.clauses!) {
+            if (pyTruth(evalExpr(cl.cond, env, flags))) {
+              flags.add("if");
+              runStmt(cl.body);
+              res = true;
+              break;
+            }
+          }
+          if (!res && st.orelse) {
+            flags.add("if");
+            runStmt(st.orelse);
+          }
+          continue;
+        }
+        // expr statement
+        try {
+          evalExpr(st.expr!, env, flags);
+        } catch (err: any) {
+          if (err && err.__print !== undefined) printed.push(err.__print);
+          else throw err;
+        }
+      }
+    };
+    runStmt(stmts);
+  }
+
+  /* ================= missions + UI ================= */
+
+  let env: Record<string, Val> = {};
+  let codeFlags = new Set<string>();
+  let lastOutput: string[] = [];
+  let allDoneShown = false;
+
+  const CHECKS: Record<string, () => boolean> = {
+    p1: () => !!envSeen.rate?.has("150"),
+    p2: () => !!envSeen.yen?.has("30000"),
+    p3: () =>
+      !!envSeen.usd &&
+      (Array.from(envSeen.usd).some((v) => Math.abs(Number(v) - 200) < 0.01)),
+    p4: () =>
+      lastOutput.some((l) => l.includes("30000") && l.includes("200")),
+    p5: () => lastOutput.some((l) => l.includes("200.00")),
+    p6: () => codeFlags.has("if") && lastOutput.some((l) => l.includes("big")),
+    p7: () =>
+      env.yen === -500 &&
+      codeFlags.has("if") &&
+      !lastOutput.some((l) => /-3\.3/.test(l)),
+    p8: () => lastOutput.some((l) => l === "mountain shadow"),
+  };
+
+  function print(text: string, cls?: string): void {
+    const div = document.createElement("div");
+    div.className = cls ? `term-line ${cls}` : "term-line";
+    div.textContent = text;
+    out.appendChild(div);
+  }
+
+  function afterRun(): void {
+    let allComplete = true;
+    for (let i = 0; i < missionEls.length; i++) {
+      const el = missionEls[i];
+      if (el.dataset.done) continue;
+      const id = el.dataset.mission!;
+      if (CHECKS[id] && CHECKS[id]()) {
+        el.dataset.done = "true";
+        delete el.dataset.active;
+        el.querySelector(".mission-hint")?.removeAttribute("open");
+        print(missionCompleteTpl.replace("{n}", String(i + 1)), "term-success");
+        continue;
+      }
+      allComplete = false;
+      el.dataset.active = "true";
+      return;
+    }
+    if (allComplete && !allDoneShown) {
+      allDoneShown = true;
+      print(missionsDoneMsg, "term-success");
+    }
+  }
+
+  function run(): void {
+    print("▶ run", "term-cmd");
+    env = {};
+    codeFlags = new Set();
+    const printed: string[] = [];
+    let pyError: PyError | { message: string } | null = null;
+    try {
+      const stmts = parseProgram(codeArea.value);
+      exec(stmts, env, codeFlags, printed);
+    } catch (err: any) {
+      if (err instanceof PyError) pyError = err;
+      else pyError = { message: err?.message ?? "invalid syntax" };
+    }
+    printed.forEach((l) => print(l));
+    if (pyError) {
+      const e = pyError as PyError;
+      if (e instanceof PyError) {
+        const where = e.lineNo ? ` (line ${e.lineNo})` : "";
+        print(`${e.name}: ${e.message}${where}`, "term-err");
+        if (e.name === "SimNote")
+          print(
+            "hint: read the message above — it's a simulator limit, not your mistake",
+            "term-info",
+          );
+      } else {
+        print(`SyntaxError: ${e.message}`, "term-err");
+      }
+    } else if (printed.length === 0) {
+      print("(no output — use print() to show something)", "term-info");
+    }
+    lastOutput = printed;
+    afterRun();
+  }
+
+  runBtn.addEventListener("click", run);
+
+  resetBtn.addEventListener("click", () => {
+    codeArea.value = "";
+    out.innerHTML = "";
+    env = {};
+    envSeen = {};
+    codeFlags = new Set();
+    lastOutput = [];
+    allDoneShown = false;
+    missionEls.forEach((el, i) => {
+      delete el.dataset.done;
+      delete el.dataset.active;
+      if (i === 0) el.dataset.active = "true";
+      el.querySelector(".mission-hint")?.removeAttribute("open");
+    });
+    print("reset — write a program on the left, press Run", "term-info");
+  });
+
+  print("mini-python — variables, numbers, strings, f-strings, if/elif/else", "term-info");
+  print("write a program in the editor and press Run", "term-info");
+</script>

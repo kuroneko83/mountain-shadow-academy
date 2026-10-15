@@ -120,6 +120,7 @@ export const curriculumJa: Curriculum = {
       title: "Python I：値、テキスト、判断",
       phase: "foundations",
       why: "これは今後あなたが書くすべてのプログラムの原子です：値を保存し、テキストを組み立て、判断を下す。ここで急がずしっかり固めること — 基礎が甘いと後で数週間を失います。",
+      guide: "python-basics",
       objectives: [
         "変数を作り、基本型（int、float、str、bool）を使える。",
         "f-stringでテキストを組み立て、ユーザーから入力を受け取れる。",
