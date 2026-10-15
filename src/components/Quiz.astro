@@ -1,0 +1,67 @@
+---
+import { UI } from "../data/ui";
+import type { Lang, QuizQuestion } from "../data/types";
+
+interface Props {
+  lang: Lang;
+  questions: QuizQuestion[];
+}
+
+const { lang, questions } = Astro.props;
+const t = UI[lang].quizPage;
+---
+
+<div class="quiz">
+  {
+    questions.map((q, qi) => (
+      <div class="quiz-q card" data-wrong-label={t.wrong}>
+        <p class="quiz-question">{q.q}</p>
+        <ul class="quiz-options">
+          {q.options.map((opt, oi) => (
+            <li>
+              <button
+                type="button"
+                class="quiz-btn"
+                data-answer={oi}
+                data-correct={oi === q.answer ? "true" : undefined}
+              >
+                {opt}
+              </button>
+            </li>
+          ))}
+        </ul>
+        <p class="quiz-status" aria-live="polite" />
+        <p class="quiz-why">
+          <strong>{t.correct}</strong> {q.why}
+        </p>
+      </div>
+    ))
+  }
+</div>
+
+<script>
+  document.querySelectorAll<HTMLElement>(".quiz-q").forEach((qEl) => {
+    const buttons = Array.from(qEl.querySelectorAll<HTMLButtonElement>(".quiz-btn"));
+    const status = qEl.querySelector<HTMLElement>(".quiz-status")!;
+    const why = qEl.querySelector<HTMLElement>(".quiz-why")!;
+    const wrongLabel = qEl.dataset.wrongLabel ?? "Not quite. Try again.";
+
+    buttons.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        if (qEl.dataset.solved) return;
+        if (btn.dataset.correct) {
+          qEl.dataset.solved = "true";
+          btn.classList.add("correct");
+          buttons.forEach((b) => (b.disabled = true));
+          why.hidden = false;
+          status.textContent = "";
+        } else {
+          btn.classList.add("wrong");
+          btn.disabled = true;
+          status.textContent = wrongLabel;
+        }
+      });
+    });
+    why.hidden = true;
+  });
+</script>

@@ -1,0 +1,498 @@
+---
+import { UI } from "../data/ui";
+import type { Lang, Mission } from "../data/types";
+
+interface Props {
+  lang: Lang;
+  missions: Mission[];
+}
+
+const { lang, missions } = Astro.props;
+const t = UI[lang].practice;
+---
+
+<div
+  class="term-wrap"
+  id="term-app"
+  data-mission-complete={t.missionComplete}
+  data-missions-done={t.missionsDone}
+  data-free-play={t.freePlay}
+>
+  <div class="term-missions">
+    <h3>{t.missionsLabel}</h3>
+    <ol class="mission-list">
+      {
+        missions.map((m, i) => (
+          <li class="mission" data-mission={m.id} data-active={i === 0 ? "true" : undefined}>
+            <p class="mission-prompt">{m.prompt}</p>
+            <details class="mission-hint">
+              <summary aria-label="hint">?</summary>
+              <p>{m.hint}</p>
+            </details>
+          </li>
+        ))
+      }
+    </ol>
+    <p class="mission-help">{t.helpHint}</p>
+    <button class="term-reset-btn" id="term-reset" type="button">{t.reset}</button>
+  </div>
+
+  <div class="term-screen" id="term-screen">
+    <div class="term-bar">
+      <span class="term-dot"></span>
+      <span class="term-dot"></span>
+      <span class="term-dot"></span>
+    </div>
+    <div class="term-output" id="term-out"></div>
+    <div class="term-line">
+      <span class="term-prompt" id="term-prompt">~ $</span>
+      <input
+        id="term-in"
+        type="text"
+        autocomplete="off"
+        autocapitalize="off"
+        spellcheck="false"
+        aria-label="terminal input"
+      />
+    </div>
+  </div>
+</div>
+
+<script>
+  const app = document.getElementById("term-app")!;
+  const out = document.getElementById("term-out")!;
+  const input = document.getElementById("term-in") as HTMLInputElement;
+  const promptEl = document.getElementById("term-prompt")!;
+  const resetBtn = document.getElementById("term-reset") as HTMLButtonElement;
+  const missionEls = Array.from(app.querySelectorAll<HTMLElement>(".mission"));
+
+  const missionCompleteTpl = app.dataset.missionComplete ?? "Mission {n} complete!";
+  const missionsDoneMsg = app.dataset.missionsDone ?? "";
+  const freePlayLabel = app.dataset.freePlay ?? "";
+
+  type Node = { type: "dir"; children: Record<string, Node> } | { type: "file"; content: string };
+
+  const file = (content: string): Node => ({ type: "file", content });
+  const dir = (children: Record<string, Node>): Node => ({ type: "dir", children });
+
+  function freshFs(): Node {
+    return dir({
+      projects: dir({
+        "hello.py": file('print("Hello, world!")'),
+        "readme.md": file("# My learning log"),
+      }),
+      documents: dir({}),
+      "notes.txt": file("Terminal practice — day 1"),
+    });
+  }
+
+  let root: Node = freshFs();
+  let cwd: string[] = [];
+  let history: string[] = [];
+  let histIdx = -1;
+  let last: { name: string; args: string[]; ok: boolean } | null = null;
+  let allDoneShown = false;
+
+  function print(text: string, cls?: string): void {
+    const div = document.createElement("div");
+    div.className = cls ? `term-line ${cls}` : "term-line";
+    div.textContent = text;
+    out.appendChild(div);
+    out.parentElement!.scrollTop = out.parentElement!.scrollHeight;
+  }
+
+  function promptText(): string {
+    return "~" + (cwd.length ? "/" + cwd.join("/") : "") + " $";
+  }
+
+  function resolve(p: string): string[] | null {
+    if (p === "") return [...cwd];
+    const fromRoot = p === "~" || p.startsWith("~/") || p.startsWith("/");
+    const segs = (fromRoot ? p.replace(/^[~/]+/, "") : p).split("/").filter(Boolean);
+    const stack = fromRoot ? [] : [...cwd];
+    for (const s of segs) {
+      if (s === ".") continue;
+      if (s === "..") {
+        stack.pop();
+        continue;
+      }
+      stack.push(s);
+    }
+    return stack;
+  }
+
+  function getNode(p: string): Node | null {
+    const segs = resolve(p);
+    if (!segs) return null;
+    let cur: Node = root;
+    for (const s of segs) {
+      if (cur.type !== "dir" || !(s in cur.children)) return null;
+      cur = cur.children[s];
+    }
+    return cur;
+  }
+
+  function parentOf(p: string): { parent: Node | null; name: string } {
+    const segs = resolve(p);
+    if (!segs || segs.length === 0) return { parent: null, name: "" };
+    let cur: Node = root;
+    for (const s of segs.slice(0, -1)) {
+      if (cur.type !== "dir" || !(s in cur.children)) return { parent: null, name: "" };
+      cur = cur.children[s];
+    }
+    return { parent: cur, name: segs[segs.length - 1] };
+  }
+
+  function tokenize(line: string): string[] {
+    const parts: string[] = [];
+    let cur = "";
+    let quote: string | null = null;
+    for (const ch of line) {
+      if (quote) {
+        if (ch === quote) quote = null;
+        else cur += ch;
+      } else if (ch === '"' || ch === "'") {
+        quote = ch;
+      } else if (/\s/.test(ch)) {
+        if (cur) parts.push(cur);
+        cur = "";
+      } else {
+        cur += ch;
+      }
+    }
+    if (cur) parts.push(cur);
+    return parts;
+  }
+
+  function run(name: string, args: string[]): boolean {
+    switch (name) {
+      case "help":
+        print(
+          "commands: pwd, ls, cd, cat, mkdir, touch, echo (with > and >>), cp, mv, rm (-r for folders), clear, python",
+          "term-info",
+        );
+        return true;
+      case "pwd":
+        print("~" + (cwd.length ? "/" + cwd.join("/") : ""));
+        return true;
+      case "ls":
+      case "dir": {
+        const target = getNode(args[0] ?? ".");
+        if (!target) {
+          print(`ls: ${args[0] ?? ""}: No such file or directory`, "term-err");
+          return false;
+        }
+        if (target.type === "file") {
+          print(args[0] ?? "");
+          return true;
+        }
+        const names = Object.keys(target.children).map((k) =>
+          target.children[k].type === "dir" ? k + "/" : k,
+        );
+        print(names.length ? names.join("   ") : "(empty)");
+        return true;
+      }
+      case "cd": {
+        if (!args[0] || args[0] === "~") {
+          cwd = [];
+          return true;
+        }
+        const target = getNode(args[0]);
+        if (!target || target.type !== "dir") {
+          print(`cd: ${args[0]}: No such directory`, "term-err");
+          return false;
+        }
+        cwd = resolve(args[0])!;
+        return true;
+      }
+      case "cat":
+      case "type": {
+        if (!args[0]) {
+          print(`${name}: missing file name`, "term-err");
+          return false;
+        }
+        const target = getNode(args[0]);
+        if (!target || target.type !== "file") {
+          print(`cat: ${args[0]}: No such file`, "term-err");
+          return false;
+        }
+        target.content.split("\n").forEach((l) => print(l));
+        return true;
+      }
+      case "echo": {
+        const gt = args.indexOf(">");
+        const gtgt = args.indexOf(">>");
+        if (gt !== -1 || gtgt !== -1) {
+          const idx = gt !== -1 ? gt : gtgt;
+          const target = args[idx + 1];
+          const text = args.slice(0, idx).join(" ");
+          if (!target) {
+            print("echo: missing file name after > or >>", "term-err");
+            return false;
+          }
+          const node = getNode(target);
+          if (node && node.type === "dir") {
+            print(`echo: ${target}: Is a directory`, "term-err");
+            return false;
+          }
+          const { parent, name } = parentOf(target);
+          if (!parent || parent.type !== "dir") {
+            print(`echo: ${target}: No such directory`, "term-err");
+            return false;
+          }
+          if (node && node.type === "file" && gtgt !== -1) {
+            node.content = node.content + (node.content.endsWith("\n") ? "" : "\n") + text + "\n";
+          } else {
+            parent.children[name] = file(text + "\n");
+          }
+          return true;
+        }
+        print(args.join(" "));
+        return true;
+      }
+      case "mkdir": {
+        const targets = args.filter((a) => !a.startsWith("-"));
+        if (targets.length === 0) {
+          print("mkdir: missing folder name", "term-err");
+          return false;
+        }
+        let ok = true;
+        for (const target of targets) {
+          const { parent, name } = parentOf(target);
+          if (!parent || parent.type !== "dir" || !name) {
+            print(`mkdir: ${target}: No such directory`, "term-err");
+            ok = false;
+            continue;
+          }
+          if (name in parent.children) {
+            print(`mkdir: ${target}: already exists`, "term-err");
+            ok = false;
+            continue;
+          }
+          parent.children[name] = dir({});
+        }
+        return ok;
+      }
+      case "touch":
+      case "ni":
+      case "New-Item": {
+        if (!args[0]) {
+          print("touch: missing file name", "term-err");
+          return false;
+        }
+        const { parent, name } = parentOf(args[0]);
+        if (!parent || parent.type !== "dir" || !name) {
+          print(`touch: ${args[0]}: No such directory`, "term-err");
+          return false;
+        }
+        if (!(name in parent.children)) parent.children[name] = file("");
+        return true;
+      }
+      case "cp":
+      case "Copy-Item":
+      case "mv":
+      case "Move-Item": {
+        const [src, dst] = args;
+        if (!src || !dst) {
+          print(`${name}: needs a source and a destination`, "term-err");
+          return false;
+        }
+        const srcNode = getNode(src);
+        if (!srcNode) {
+          print(`${name}: ${src}: No such file or directory`, "term-err");
+          return false;
+        }
+        const dstNode = getNode(dst);
+        const { parent, name } = parentOf(dstNode && dstNode.type === "dir" ? dst : dst);
+        if (!parent || parent.type !== "dir" || !name) {
+          print(`${name}: ${dst}: No such directory`, "term-err");
+          return false;
+        }
+        const finalName =
+          dstNode && dstNode.type === "dir" ? src.split("/").filter(Boolean).pop()! : name;
+        const finalParent =
+          dstNode && dstNode.type === "dir" ? dstNode : parent;
+        if (srcNode.type === "file") {
+          finalParent.children[finalName] =
+            name.startsWith("cp") || name.startsWith("Copy")
+              ? file(srcNode.content)
+              : file(srcNode.content);
+          if (name.startsWith("mv") || name.startsWith("Move")) {
+            const sp = parentOf(src);
+            if (sp.parent && sp.parent.type === "dir") delete sp.parent.children[sp.name];
+          }
+        } else {
+          print(`${name}: folders — keep it simple in this simulator`, "term-err");
+          return false;
+        }
+        return true;
+      }
+      case "rm":
+      case "Remove-Item": {
+        const recursive = args.includes("-r") || args.includes("-rf");
+        const targets = args.filter((a) => !a.startsWith("-"));
+        if (targets.length === 0) {
+          print("rm: missing file name", "term-err");
+          return false;
+        }
+        let ok = true;
+        for (const target of targets) {
+          const node = getNode(target);
+          if (!node) {
+            print(`rm: ${target}: No such file or directory`, "term-err");
+            ok = false;
+            continue;
+          }
+          if (node.type === "dir" && !recursive) {
+            print(`rm: ${target}: is a folder (use rm -r)`, "term-err");
+            ok = false;
+            continue;
+          }
+          const { parent, name } = parentOf(target);
+          if (parent && parent.type === "dir") delete parent.children[name];
+        }
+        return ok;
+      }
+      case "clear":
+        out.innerHTML = "";
+        return true;
+      case "python":
+      case "python3": {
+        if (args[0] === "--version" || args[0] === "-V") {
+          print("Python 3.12.0 (simulated)");
+          return true;
+        }
+        if (!args[0]) {
+          print("python: give me a file, like python hello.py", "term-info");
+          return false;
+        }
+        const node = getNode(args[0]);
+        if (!node || node.type !== "file") {
+          print(`python: can't open file '${args[0]}'`, "term-err");
+          return false;
+        }
+        if (node.content.includes('print("Hello, world!")')) {
+          print("Hello, world!");
+        } else {
+          print(`(simulated) ran ${args[0]} — output appears here`);
+        }
+        return true;
+      }
+      default:
+        print(`${name}: command not found — type help`, "term-err");
+        return false;
+    }
+  }
+
+  function isDir(p: string): boolean {
+    const n = getNode(p);
+    return !!n && n.type === "dir";
+  }
+
+  const CHECKS: Record<string, () => boolean> = {
+    m1: () => last?.name === "pwd" && !!last?.ok,
+    m2: () => (last?.name === "ls" || last?.name === "dir") && !!last?.ok,
+    m3: () => cwd.join("/") === "projects",
+    m4: () => isDir("~/projects/data"),
+    m5: () => isDir("~/projects/data/scripts"),
+    m6: () => {
+      const n = getNode("~/projects/data/scripts/notes.txt");
+      return !!n && n.type === "file" && n.content.trim().length > 0;
+    },
+    m7: () => {
+      if (!last || !last.ok) return false;
+      if (last.name !== "cat" && last.name !== "type") return false;
+      const n = getNode(last.args[0] ?? "");
+      return !!n && n.type === "file" && n.content.trim().length > 0;
+    },
+    m8: () => cwd.length === 0,
+  };
+
+  function afterCommand(): void {
+    let allComplete = true;
+    for (let i = 0; i < missionEls.length; i++) {
+      const el = missionEls[i];
+      if (el.dataset.done) continue;
+      const id = el.dataset.mission!;
+      if (CHECKS[id] && CHECKS[id]()) {
+        el.dataset.done = "true";
+        delete el.dataset.active;
+        el.querySelector(".mission-hint")?.removeAttribute("open");
+        print(missionCompleteTpl.replace("{n}", String(i + 1)), "term-success");
+        continue;
+      }
+      allComplete = false;
+      el.dataset.active = "true";
+      return;
+    }
+    if (allComplete && !allDoneShown) {
+      allDoneShown = true;
+      print(missionsDoneMsg, "term-success");
+      print(freePlayLabel, "term-info");
+    }
+  }
+
+  function exec(raw: string): void {
+    const line = raw.trim();
+    if (!line) return;
+    print(`${promptText()} ${line}`, "term-cmd");
+    const parts = tokenize(line);
+    const name = parts[0];
+    const args = parts.slice(1);
+    const ok = run(name, args);
+    last = { name, args, ok };
+    afterCommand();
+    promptEl.textContent = promptText();
+  }
+
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      const value = input.value;
+      if (value.trim()) {
+        history.push(value);
+        histIdx = history.length;
+      }
+      input.value = "";
+      exec(value);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      if (histIdx > 0) {
+        histIdx--;
+        input.value = history[histIdx] ?? "";
+      }
+    } else if (e.key === "ArrowDown") {
+      e.preventDefault();
+      if (histIdx < history.length - 1) {
+        histIdx++;
+        input.value = history[histIdx] ?? "";
+      } else {
+        histIdx = history.length;
+        input.value = "";
+      }
+    }
+  });
+
+  document.getElementById("term-screen")!.addEventListener("click", () => input.focus());
+
+  resetBtn.addEventListener("click", () => {
+    root = freshFs();
+    cwd = [];
+    history = [];
+    histIdx = -1;
+    last = null;
+    allDoneShown = false;
+    out.innerHTML = "";
+    missionEls.forEach((el, i) => {
+      delete el.dataset.done;
+      delete el.dataset.active;
+      if (i === 0) el.dataset.active = "true";
+      el.querySelector(".mission-hint")?.removeAttribute("open");
+    });
+    print("reset — type help to list commands", "term-info");
+  });
+
+  print("welcome to the practice terminal — nothing here is real, break everything you want", "term-info");
+  print("type help to list commands", "term-info");
+  promptEl.textContent = promptText();
+  input.focus();
+</script>

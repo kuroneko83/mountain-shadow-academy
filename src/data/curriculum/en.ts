@@ -32,6 +32,7 @@ export const curriculumEn: Curriculum = {
       title: "Your tools: terminal, Python, VS Code",
       phase: "foundations",
       why: "Everything you will do for the next 12 weeks — and the rest of your career — happens in these three tools. Getting comfortable with them now makes every later week faster and less scary.",
+      guide: "command-line",
       objectives: [
         "Move around your computer with the terminal (PowerShell on Windows, bash on Linux) instead of only clicking.",
         "Run Python from the terminal and know which version you have.",

@@ -33,6 +33,7 @@ export const curriculumUz: Curriculum = {
       title: "Vositalaringiz: terminal, Python, VS Code",
       phase: "foundations",
       why: "Keyingi 12 haftada — va butun karyeringizda — qiladigan barcha ishlaringiz shu uchta vositada boʻlib oʻtadi. Ularga hozir oʻrganib qoʻysangiz, keyingi har bir hafta tezroq va kamroq qoʻrqinchli boʻladi.",
+      guide: "command-line",
       objectives: [
         "Faqat bosish emas, terminal (Windowsʼda PowerShell, Linuxʼda bash) bilan kompyuterda harakat qilish.",
         "Terminaldan Python ishga tushirish va qaysi versiyaga ega ekanligini bilish.",

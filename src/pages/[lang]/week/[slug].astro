@@ -4,6 +4,7 @@ import { LANGS, LANG_LABEL } from "../../../data/types";
 import type { Lang } from "../../../data/types";
 import { UI } from "../../../data/ui";
 import { getCurriculum, getWeek, getWeekIndex } from "../../../data";
+import { getGuide } from "../../../data/guides";
 import { BASE, href } from "../../../utils";
 
 export function getStaticPaths() {
@@ -24,6 +25,7 @@ if (!week || idx < 0) {
 }
 
 const phase = c.phases.find((p) => p.id === week.phase);
+const guide = week.guide ? getGuide(lang, week.guide) : undefined;
 const prev = idx > 0 ? c.weeks[idx - 1] : undefined;
 const next = idx < c.weeks.length - 1 ? c.weeks[idx + 1] : undefined;
 const num = week.slug.slice(0, 2);
@@ -52,6 +54,16 @@ const phaseClass: Record<string, string> = {
       {week.objectives.map((o) => <li>{o}</li>)}
     </ul>
   </section>
+
+  {
+    guide && (
+      <a class="card guide-teaser" href={href(`/${lang}/guides/${guide.slug}/`)}>
+        <span class="eyebrow">{t.weekPage.guideLabel}</span>
+        <h3>{guide.title}</h3>
+        <p>{t.guidesPage.intro}</p>
+      </a>
+    )
+  }
 
   <section class="week-section">
     <h2>{t.weekPage.topicsLabel}</h2>

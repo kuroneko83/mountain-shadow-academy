@@ -1,0 +1,34 @@
+---
+import Base from "../../../layouts/Base.astro";
+import { LANGS } from "../../../data/types";
+import type { Lang } from "../../../data/types";
+import { UI } from "../../../data/ui";
+import { getGuides } from "../../../data/guides";
+import { href } from "../../../utils";
+
+export function getStaticPaths() {
+  return LANGS.map((lang) => ({ params: { lang } }));
+}
+
+const { lang } = Astro.params as { lang: Lang };
+const t = UI[lang];
+const guides = getGuides(lang);
+---
+
+<Base lang={lang} title={t.guidesPage.heading} description={t.guidesPage.intro}>
+  <p class="eyebrow">{t.siteName}</p>
+  <h1>{t.guidesPage.heading}</h1>
+  <p style="color: var(--ink-soft); max-width: 46rem;">{t.guidesPage.intro}</p>
+
+  <div class="week-grid" style="margin-top: 1.5rem;">
+    {
+      guides.map((g) => (
+        <a class="card week-card" href={href(`/${lang}/guides/${g.slug}/`)}>
+          <span class="tag">{t.guidesPage.readLabel}</span>
+          <h3>{g.title}</h3>
+          <p>{g.intro}</p>
+        </a>
+      ))
+    }
+  </div>
+</Base>

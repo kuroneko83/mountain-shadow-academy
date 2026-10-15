@@ -4,7 +4,7 @@ export const UI: Record<Lang, UI> = {
   en: {
     siteName: "Mountain Shadow Academy",
     tagline: "Python · Scripting · Data Engineering — from zero to portfolio",
-    nav: { home: "Home", curriculum: "Curriculum", resources: "Resources" },
+    nav: { home: "Home", curriculum: "Curriculum", guides: "Guides", resources: "Resources" },
     hero: {
       heading: "From zero to a data portfolio in 12 weeks",
       body: "A free, structured study path for future interns at Mountain Shadow Trade (Tokyo). No prior programming experience needed — just discipline and a few evenings per week. Everything uses free learning resources, and every week ends with something real you built.",
@@ -35,12 +35,41 @@ export const UI: Record<Lang, UI> = {
       whyLabel: "Why this matters",
       objectivesLabel: "By the end of this week you can",
       topicsLabel: "Topics",
+      guideLabel: "Deep-dive guide",
       projectLabel: "Applied project",
       resourcesLabel: "Free resources",
       prev: "Previous week",
       next: "Next week",
       back: "All weeks",
       weekLabel: "Week",
+    },
+    guidesPage: {
+      heading: "Deep-dive guides",
+      intro:
+        "Each guide goes slower and deeper than the weekly plan: plain-language explanations, worked examples for Windows and Linux, a simulated terminal to practice safely, and a quiz to check yourself.",
+      readLabel: "Read this guide",
+      backToCurriculum: "All guides",
+      lessonLabel: "Lesson",
+      cheatLabel: "Cheat sheet — Windows vs Linux",
+    },
+    practice: {
+      title: "Practice: simulated terminal",
+      intro:
+        "A safe fake terminal below — you can't break anything. Complete the missions in order; each one is checked automatically. Type help anytime.",
+      missionsLabel: "Missions",
+      missionsDone: "All missions complete — this is real learning. Play freely: create, rename, delete, explore.",
+      missionComplete: "Mission {n} complete!",
+      freePlay: "Free play",
+      reset: "Reset terminal",
+      helpHint: "Stuck? Type help, or reveal the hint under each mission.",
+    },
+    quizPage: {
+      title: "Check your knowledge",
+      intro:
+        "No grades, no scores — click an answer and read why it's right or wrong. Wrong answers let you try again.",
+      correct: "Correct —",
+      wrong: "Not quite. Try again.",
+      retry: "Try again",
     },
     resourcesPage: {
       heading: "All free resources",
@@ -57,7 +86,7 @@ export const UI: Record<Lang, UI> = {
   ja: {
     siteName: "マウンテンシャドウ・アカデミー",
     tagline: "Python・スクリプト・データエンジニアリング — ゼロからポートフォリオへ",
-    nav: { home: "ホーム", curriculum: "カリキュラム", resources: "リソース" },
+    nav: { home: "ホーム", curriculum: "カリキュラム", guides: "ガイド", resources: "リソース" },
     hero: {
       heading: "12週間でゼロからデータポートフォリオへ",
       body: "Mountain Shadow Trade（東京）でインターンを目指す方のための、無料で体系的な学習パスです。プログラミング経験は不要です。必要なのは継続する力と、週数時間の勉強時間だけ。使用するのはすべて無料の学習リソースで、毎週、実際に動く成果物を作ります。",
@@ -88,12 +117,41 @@ export const UI: Record<Lang, UI> = {
       whyLabel: "なぜ重要か",
       objectivesLabel: "この週の終わりにできるようになること",
       topicsLabel: "トピック",
+      guideLabel: "深掘りガイド",
       projectLabel: "実践プロジェクト",
       resourcesLabel: "無料リソース",
       prev: "前の週",
       next: "次の週",
       back: "一覧に戻る",
       weekLabel: "第",
+    },
+    guidesPage: {
+      heading: "深掘りガイド",
+      intro:
+        "各ガイドは週次計画よりゆっくり、深く進みます：平易な解説、WindowsとLinux両方の実例、安全に練習できるシミュレーションターミナル、そして理解を確認するクイズ。",
+      readLabel: "このガイドを読む",
+      backToCurriculum: "ガイド一覧に戻る",
+      lessonLabel: "レッスン",
+      cheatLabel: "チートシート — Windows vs Linux",
+    },
+    practice: {
+      title: "練習：シミュレーションターミナル",
+      intro:
+        "下は安全な疑似ターミナルです — 何を壊しても大丈夫。ミッションを順番にクリアしてください。それぞれ自動で判定されます。いつでも help と入力できます。",
+      missionsLabel: "ミッション",
+      missionsDone: "全ミッションクリア — これは本物の学習です。自由に遊んでください：作成、リネーム、削除、探索。",
+      missionComplete: "ミッション{n}クリア！",
+      freePlay: "フリープレイ",
+      reset: "ターミナルをリセット",
+      helpHint: "詰まったら help と入力するか、各ミッションのヒントを見てください。",
+    },
+    quizPage: {
+      title: "理解度チェック",
+      intro:
+        "成績も点数もありません — 答えをクリックして、正誤の理由を読みます。間違えたら再挑戦できます。",
+      correct: "正解 —",
+      wrong: "違います。もう一度。",
+      retry: "もう一度",
     },
     resourcesPage: {
       heading: "無料リソース一覧",
@@ -110,7 +168,7 @@ export const UI: Record<Lang, UI> = {
   uz: {
     siteName: "Mountain Shadow Akademiya",
     tagline: "Python · Skriptlar · Data muhandisligi — noldan portfelgacha",
-    nav: { home: "Asosiy", curriculum: "Oʻquv rejasi", resources: "Resurslar" },
+    nav: { home: "Asosiy", curriculum: "Oʻquv rejasi", guides: "Qoʻllanmalar", resources: "Resurslar" },
     hero: {
       heading: "12 haftada noldan data portfeliga",
       body: "Mountain Shadow Trade (Tokio) kompaniyasida stajyor boʻlishni maqsad qilganlar uchun bepul, tizimli oʻquv rejasi. Dasturlash tajribasi shart emas — faqat intizom va haftada bir nechta oqshom kerak. Barcha materiallar bepul resurslarga asoslanadi va har hafta siz oʻzingiz yaratgan real natija bilan tugaydi.",
@@ -141,12 +199,41 @@ export const UI: Record<Lang, UI> = {
       whyLabel: "Nega muhim",
       objectivesLabel: "Bu hafta oxirida quyidagilarni bila olasiz",
       topicsLabel: "Mavzular",
+      guideLabel: "Chuqurroq oʻrganish",
       projectLabel: "Amaliy loyiha",
       resourcesLabel: "Bepul resurslar",
       prev: "Oldingi hafta",
       next: "Keyingi hafta",
       back: "Barcha haftalar",
       weekLabel: "Hafta",
+    },
+    guidesPage: {
+      heading: "Chuqurroq qoʻllanmalar",
+      intro:
+        "Har bir qoʻllanma haftalik reja bilan solishtirganda sekinroq va chuqurroq boradi: oddiy tildagi tushuntirishlar, Windows va Linux uchun misollar, xavfsiz mashq qiladigan simulyatsiya terminali va bilimni tekshiradigan test.",
+      readLabel: "Bu qoʻllanmani oʻqish",
+      backToCurriculum: "Qoʻllanmalar roʻyxati",
+      lessonLabel: "Darslik",
+      cheatLabel: "Tezkor jadval — Windows va Linux",
+    },
+    practice: {
+      title: "Mashq: simulyatsiya terminali",
+      intro:
+        "Quyida xavfsiz soxta terminal bor — hech narsani buza olmaysiz. Missiyalarni tartib bilan bajaring; har biri avtomatik tekshiriladi. Har qachon help deb yozing.",
+      missionsLabel: "Missiyalar",
+      missionsDone: "Barcha missiyalar bajarildi — bu haqiqiy oʻrganish. Erkin oʻynang: yarating, nomini oʻzgartiring, oʻchiring, kuzating.",
+      missionComplete: "Missiya {n} bajarildi!",
+      freePlay: "Erkin rejim",
+      reset: "Terminalni qayta boshlash",
+      helpHint: "Tutildingizmi? help deb yozing yoki missiya ostidagi maslahatni oching.",
+    },
+    quizPage: {
+      title: "Bilimingizni tekshiring",
+      intro:
+        "Baholar ham, ballar ham yoʻq — javobni bosing va nega toʻgʻri yoki notoʻgʻri ekanini oʻqing. Notoʻgʻri javobda qayta urinishingiz mumkin.",
+      correct: "Toʻgʻri —",
+      wrong: "Notoʻgʻri. Yana urinib koʻring.",
+      retry: "Yana urinish",
     },
     resourcesPage: {
       heading: "Barcha bepul resurslar",

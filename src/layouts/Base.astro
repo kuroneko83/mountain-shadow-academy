@@ -20,6 +20,7 @@ const here = Astro.url.pathname.startsWith(basePrefix)
   : Astro.url.pathname;
 const isHome = here === `/${lang}/` || here === `/${lang}`;
 const isCurriculum = here.startsWith(`/${lang}/curriculum`);
+const isGuides = here.startsWith(`/${lang}/guides`);
 const isResources = here.startsWith(`/${lang}/resources`);
 ---
 
@@ -48,6 +49,12 @@ const isResources = here.startsWith(`/${lang}/resources`);
             aria-current={isCurriculum ? "page" : undefined}
           >
             {t.nav.curriculum}
+          </a>
+          <a
+            href={href(`/${lang}/guides/`)}
+            aria-current={isGuides ? "page" : undefined}
+          >
+            {t.nav.guides}
           </a>
           <a
             href={href(`/${lang}/resources/`)}

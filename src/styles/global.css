@@ -477,3 +477,376 @@ h3 {
     justify-content: center;
   }
 }
+
+/* ---------- guides ---------- */
+
+.guide-section {
+  margin: 2.25rem 0;
+}
+
+.guide-section > h2 {
+  font-size: 1.15rem;
+  margin-bottom: 0.5rem;
+}
+
+.guide-section > p {
+  color: var(--ink-soft);
+  max-width: 46rem;
+}
+
+.guide-examples {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 0.9rem;
+}
+
+.guide-example {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.guide-example-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+pre.term-line {
+  margin: 0;
+  padding: 0.5rem 0.85rem;
+  border-radius: 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.88rem;
+  overflow-x: auto;
+}
+
+pre.term-cmd-pre {
+  background: #17202a;
+  color: #7fd490;
+  border: 1px solid #2c3a49;
+}
+
+pre.term-cmd-pre::before {
+  content: "$ ";
+  color: #5b9bd5;
+}
+
+pre.term-out-pre {
+  background: #eef0ea;
+  color: #333b46;
+  border: 1px dashed #c8ccd2;
+}
+
+@media (prefers-color-scheme: dark) {
+  pre.term-out-pre {
+    background: #202731;
+    color: #aeb6c2;
+    border-color: #37404d;
+  }
+}
+
+.guide-note {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--ink-faint);
+}
+
+.guide-teaser {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  margin: 2rem 0;
+  border-left: 4px solid var(--p1);
+}
+
+.guide-teaser h3 {
+  margin: 0.2rem 0 0.4rem;
+}
+
+.guide-teaser p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.88rem;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--line);
+}
+
+th {
+  color: var(--ink-faint);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+td code,
+td:nth-child(n+2) {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+/* ---------- simulated terminal ---------- */
+
+.term-wrap {
+  display: grid;
+  grid-template-columns: minmax(14rem, 20rem) 1fr;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+@media (max-width: 720px) {
+  .term-wrap {
+    grid-template-columns: 1fr;
+  }
+}
+
+.term-missions {
+  background: var(--bg-card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 1rem 1.1rem;
+  font-size: 0.9rem;
+}
+
+.term-missions h3 {
+  margin: 0 0 0.5rem;
+  font-size: 0.95rem;
+}
+
+.mission-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.mission {
+  padding: 0.5rem 0.55rem;
+  border-radius: 8px;
+  border: 1px solid transparent;
+}
+
+.mission[data-active="true"] {
+  border-color: var(--p1);
+  background: var(--p1-soft);
+}
+
+.mission[data-done="true"] {
+  opacity: 0.65;
+}
+
+.mission[data-done="true"] .mission-prompt::before {
+  content: "✓ ";
+  color: var(--p3);
+  font-weight: 700;
+}
+
+.mission-prompt {
+  margin: 0;
+  color: var(--ink-soft);
+}
+
+.mission-hint summary {
+  cursor: pointer;
+  font-size: 0.75rem;
+  color: var(--ink-faint);
+  width: fit-content;
+}
+
+.mission-hint p {
+  margin: 0.3rem 0 0;
+  font-size: 0.8rem;
+  color: var(--ink-faint);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.mission-help {
+  font-size: 0.78rem;
+  color: var(--ink-faint);
+  margin: 0.6rem 0;
+}
+
+.term-reset-btn {
+  font-size: 0.8rem;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink-soft);
+  border-radius: 8px;
+  padding: 0.3rem 0.8rem;
+  cursor: pointer;
+}
+
+.term-reset-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.term-screen {
+  background: #10161d;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid #263140;
+  display: flex;
+  flex-direction: column;
+  min-height: 22rem;
+}
+
+.term-bar {
+  display: flex;
+  gap: 0.4rem;
+  padding: 0.55rem 0.85rem;
+  background: #1a222d;
+  border-bottom: 1px solid #263140;
+}
+
+.term-dot {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 50%;
+  background: #3a4552;
+}
+
+.term-output {
+  padding: 0.9rem 1rem 0.3rem;
+  overflow-y: auto;
+  flex: 1;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.88rem;
+  line-height: 1.55;
+}
+
+.term-output .term-line {
+  color: #c6cfd9;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.term-output .term-cmd {
+  color: #7fd490;
+}
+
+.term-output .term-err {
+  color: #e26d6d;
+}
+
+.term-output .term-success {
+  color: #ffd479;
+}
+
+.term-output .term-info {
+  color: #7fa3c9;
+}
+
+.term-line {
+  display: flex;
+  gap: 0.6rem;
+  padding: 0.5rem 0.6rem 0.9rem 1rem;
+  background: #10161d;
+}
+
+.term-prompt {
+  color: #5b9bd5;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.88rem;
+  white-space: nowrap;
+}
+
+#term-in {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #e6ecf2;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.88rem;
+  caret-color: #7fd490;
+}
+
+/* ---------- quiz ---------- */
+
+.quiz {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.quiz-q {
+  margin: 0;
+}
+
+.quiz-question {
+  margin: 0 0 0.7rem;
+  font-weight: 600;
+}
+
+.quiz-options {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.quiz-btn {
+  width: 100%;
+  text-align: left;
+  padding: 0.55rem 0.9rem;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--ink);
+  font-size: 0.92rem;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.quiz-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.quiz-btn.correct {
+  border-color: var(--p3);
+  background: var(--p3-soft);
+  font-weight: 600;
+}
+
+.quiz-btn.wrong {
+  border-color: var(--p4);
+  background: var(--p4-soft);
+  text-decoration: line-through;
+  opacity: 0.7;
+}
+
+.quiz-btn:disabled {
+  cursor: default;
+}
+
+.quiz-status {
+  margin: 0.5rem 0 0;
+  font-size: 0.85rem;
+  color: var(--p4);
+  min-height: 1.2em;
+}
+
+.quiz-why {
+  margin: 0.5rem 0 0;
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+  border-left: 3px solid var(--p3);
+  padding-left: 0.8rem;
+}

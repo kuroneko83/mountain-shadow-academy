@@ -33,6 +33,7 @@ export const curriculumJa: Curriculum = {
       title: "あなたの道具：ターミナル、Python、VS Code",
       phase: "foundations",
       why: "これからの12週間 — そして今後のキャリア — で行うすべての作業は、この3つの道具の中で行われます。今この3つに慣れておくことで、後の毎週が速く、そして怖くなくなります。",
+      guide: "command-line",
       objectives: [
         "クリックだけではなく、ターミナル（WindowsはPowerShell、Linuxはbash）でPC内を移動できる。",
         "ターミナルからPythonを実行し、自分のバージョンを把握できる。",

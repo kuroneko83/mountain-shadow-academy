@@ -1,0 +1,113 @@
+---
+import Base from "../../../layouts/Base.astro";
+import { LANGS } from "../../../data/types";
+import type { Lang } from "../../../data/types";
+import { UI } from "../../../data/ui";
+import { getGuides, getGuide, GUIDE_SLUGS } from "../../../data/guides";
+import { href } from "../../../utils";
+import TerminalSim from "../../../components/TerminalSim.astro";
+import Quiz from "../../../components/Quiz.astro";
+
+export function getStaticPaths() {
+  return LANGS.flatMap((lang) =>
+    GUIDE_SLUGS.map((slug) => ({ params: { lang, slug } })),
+  );
+}
+
+const { lang, slug } = Astro.params as { lang: Lang; slug: string };
+const t = UI[lang];
+const guide = getGuide(lang, slug);
+
+if (!guide) {
+  return Astro.redirect(href(`/${lang}/guides/`));
+}
+---
+
+<Base lang={lang} title={guide.title} description={guide.intro}>
+  <a class="back-link" href={href(`/${lang}/guides/`)}>← {t.guidesPage.backToCurriculum}</a>
+
+  <div class="week-header">
+    <p class="eyebrow">{t.guidesPage.lessonLabel}</p>
+    <h1>{guide.title}</h1>
+    <p class="why">{guide.intro}</p>
+  </div>
+
+  {
+    guide.sections.map((s) => (
+      <section class="guide-section">
+        <h2>{s.heading}</h2>
+        <p>{s.body}</p>
+        {s.examples && (
+          <div class="guide-examples">
+            {s.examples.map((ex) => (
+              <div class="guide-example">
+                {ex.label && <span class="guide-example-label">{ex.label}</span>}
+                <pre class="term-line term-cmd-pre"><code>{ex.cmd}</code></pre>
+                {ex.output && (
+                  <pre class="term-line term-out-pre"><code>{ex.output}</code></pre>
+                )}
+                {ex.note && <p class="guide-note">{ex.note}</p>}
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+    ))
+  }
+
+  {
+    guide.cheatSheet && (
+      <section class="guide-section">
+        <h2>{t.guidesPage.cheatLabel}</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>{guide.cheatSheet.heading}</th>
+                <th>Windows (PowerShell)</th>
+                <th>Linux / macOS</th>
+              </tr>
+            </thead>
+            <tbody>
+              {guide.cheatSheet.rows.map((r) => (
+                <tr>
+                  <td>{r.action}</td>
+                  <td>
+                    <code>{r.win}</code>
+                  </td>
+                  <td>
+                    <code>{r.linux}</code>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    )
+  }
+
+  {
+    guide.missions.length > 0 && (
+      <section class="guide-section">
+        <h2>{t.practice.title}</h2>
+        <p>{t.practice.intro}</p>
+        <TerminalSim lang={lang} missions={guide.missions} />
+      </section>
+    )
+  }
+
+  {
+    guide.quiz.length > 0 && (
+      <section class="guide-section">
+        <h2>{t.quizPage.title}</h2>
+        <p>{t.quizPage.intro}</p>
+        <Quiz lang={lang} questions={guide.quiz} />
+      </section>
+    )
+  }
+
+  <section class="guide-section">
+    <p class="free-note">{guide.outro}</p>
+  </section>
+</Base>
