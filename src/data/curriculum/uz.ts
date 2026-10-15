@@ -207,6 +207,7 @@ export const curriculumUz: Curriculum = {
       title: "Maʼlumot tuzilmalari va fayllar",
       phase: "python",
       why: "Haqiqiy dasturlar maʼlumotni saqlab qoladi: roʻyxat va lugʻatlar bilan ushlab turadi, fayllarga saqlaydi. Bu haftadan dasturlaringiz tugagandan keyin ham hamma narsani unutmaydi.",
+      guide: "data-files",
       objectives: [
         "Toʻgʻri tuzilmani tanlash: roʻyxat (list), lugʻat (dict) yoki tuple.",
         "Matn va CSV fayllarni oʻqish va yozish.",

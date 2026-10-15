@@ -53,8 +53,11 @@ export interface GuideSection {
 
 export interface CheatRow {
   action: string;
-  win: string;
-  linux: string;
+  /** same command on Windows and Linux/macOS */
+  command?: string;
+  /** only when the command differs per platform */
+  win?: string;
+  linux?: string;
 }
 
 export interface Mission {

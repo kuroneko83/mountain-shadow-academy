@@ -207,6 +207,7 @@ export const curriculumEn: Curriculum = {
       title: "Data structures & files",
       phase: "python",
       why: "Real programs keep data around: lists and dicts to hold it, files to persist it. This week your programs stop forgetting everything when they end.",
+      guide: "data-files",
       objectives: [
         "Choose the right structure: list, dict, or tuple.",
         "Read and write text files and CSV files.",

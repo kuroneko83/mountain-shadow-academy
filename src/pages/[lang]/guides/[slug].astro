@@ -25,7 +25,8 @@ if (!guide) {
 }
 
 const sim = guide.slug === "git" ? "git" : "command-line";
-const usesPythonSim = guide.slug === "python-basics" || guide.slug === "python-loops";
+const PYTHON_GUIDES = ["python-basics", "python-loops", "data-files"];
+const usesPythonSim = PYTHON_GUIDES.includes(guide.slug);
 const servedWeek = guide.week ? getWeek(lang, guide.week) : undefined;
 ---
 
@@ -89,25 +90,47 @@ const servedWeek = guide.week ? getWeek(lang, guide.week) : undefined;
         <h2>{t.guidesPage.cheatLabel}</h2>
         <div class="table-wrap">
           <table>
-            <thead>
-              <tr>
-                <th>{guide.cheatSheet.heading}</th>
-                <th>Windows (PowerShell)</th>
-                <th>Linux / macOS</th>
-              </tr>
-            </thead>
+            {
+              guide.cheatSheet.rows.some((r) => r.win !== undefined) ? (
+                <thead>
+                  <tr>
+                    <th>{guide.cheatSheet.heading}</th>
+                    <th>Windows (PowerShell)</th>
+                    <th>Linux / macOS</th>
+                  </tr>
+                </thead>
+              ) : (
+                <thead>
+                  <tr>
+                    <th>{guide.cheatSheet.heading}</th>
+                    <th>{t.guidesPage.commandCol}</th>
+                  </tr>
+                </thead>
+              )
+            }
             <tbody>
-              {guide.cheatSheet.rows.map((r) => (
-                <tr>
-                  <td>{r.action}</td>
-                  <td>
-                    <code>{r.win}</code>
-                  </td>
-                  <td>
-                    <code>{r.linux}</code>
-                  </td>
-                </tr>
-              ))}
+              {
+                guide.cheatSheet.rows.map((r) =>
+                  r.win !== undefined ? (
+                    <tr>
+                      <td>{r.action}</td>
+                      <td>
+                        <code>{r.win}</code>
+                      </td>
+                      <td>
+                        <code>{r.linux}</code>
+                      </td>
+                    </tr>
+                  ) : (
+                    <tr>
+                      <td>{r.action}</td>
+                      <td colspan={guide.cheatSheet.rows.some((x) => x.win !== undefined) ? 2 : 1}>
+                        <code>{r.command}</code>
+                      </td>
+                    </tr>
+                  ),
+                )
+              }
             </tbody>
           </table>
         </div>

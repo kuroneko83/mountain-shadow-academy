@@ -158,7 +158,7 @@ const runLabel =
         i += 2;
         continue;
       }
-      if ("+-*/%<>=().,:[]".includes(ch)) {
+      if ("+-*/%<>=().,:[]{}".includes(ch)) {
         toks.push({ t: "op", v: ch });
         i++;
         continue;
@@ -193,7 +193,16 @@ const runLabel =
 
   type Expr = any;
   interface Stmt {
-    kind: "assign" | "expr" | "if" | "while" | "for" | "def" | "return";
+    kind:
+      | "assign"
+      | "assignindex"
+      | "expr"
+      | "if"
+      | "while"
+      | "for"
+      | "def"
+      | "return"
+      | "with";
     lineNo: number;
     name?: string;
     expr?: Expr;
@@ -204,6 +213,8 @@ const runLabel =
     var?: string;
     iter?: Expr;
     params?: string[];
+    idx?: Expr;
+    openExpr?: Expr;
   }
 
   function parseProgram(src: string): Stmt[] {
@@ -322,6 +333,38 @@ const runLabel =
         i = body.next;
         continue;
       }
+      if (first.t === "name" && first.v === "with") {
+        const asIdx = ln.toks.findIndex(
+          (t, k) => k > 2 && t.t === "name" && t.v === "as",
+        );
+        if (asIdx === -1)
+          throw new PyError(
+            "SyntaxError",
+            "expected: with open(file, mode) as variable:",
+            ln.lineNo,
+          );
+        const openExpr = parseExprTokens(ln.toks.slice(1, asIdx), ln.lineNo, false);
+        const varTok = ln.toks[asIdx + 1];
+        if (!varTok || varTok.t !== "name")
+          throw new PyError("SyntaxError", "expected a variable after 'as'", ln.lineNo);
+        if (
+          ln.toks[asIdx + 2]?.t !== "op" ||
+          ln.toks[asIdx + 2]!.v !== ":" ||
+          ln.toks.length > asIdx + 3
+        )
+          throw new PyError("SyntaxError", "expected ':' at the end of the with line", ln.lineNo);
+        const body = childBlock(lines, i + 1, indent, ln.lineNo);
+        stmts.push({ kind: "with", lineNo: ln.lineNo, openExpr, var: varTok.v, body: body.stmts });
+        i = body.next;
+        continue;
+      }
+      if (first.t === "name" && first.v === "import") {
+        throw new PyError(
+          "SimNote",
+          `import ${ln.toks[1]?.v ?? ""} — in this simulator, files are plain text (open / write / read). The real csv and json modules are for the real project on your machine`,
+          ln.lineNo,
+        );
+      }
       if (first.t === "name" && first.v === "return") {
         const rest = ln.toks.slice(1);
         stmts.push({
@@ -399,6 +442,19 @@ const runLabel =
 
   function parseSimple(ln: { toks: Tok[]; lineNo: number }): Stmt {
     const toks = ln.toks;
+    // dict/list element assignment: expenses[0] = "x", d["k"] = v
+    if (toks[0]?.t === "name" && toks[1]?.t === "op" && toks[1].v === "[") {
+      const close = toks.findIndex((t, k) => k > 1 && t.t === "op" && t.v === "]");
+      if (close !== -1 && toks[close + 1]?.t === "op" && toks[close + 1]!.v === "=") {
+        return {
+          kind: "assignindex",
+          lineNo: ln.lineNo,
+          name: toks[0].v,
+          idx: parseExprTokens(toks.slice(2, close), ln.lineNo, false),
+          expr: parseExprTokens(toks.slice(close + 2), ln.lineNo, false),
+        };
+      }
+    }
     if (toks[1] && toks[1].t === "op" && toks[1].v === "=") {
       if (toks[0].t !== "name")
         throw new PyError("SyntaxError", "cannot assign to this", ln.lineNo);
@@ -501,6 +557,18 @@ const runLabel =
         this.pos++;
         const right = this.parseArith();
         left = { k: "cmp", op: c.v, left, right };
+      } else if (c && c.t === "name" && c.v === "in") {
+        this.pos++;
+        left = { k: "cmp", op: "in", left, right: this.parseArith() };
+      } else if (
+        c &&
+        c.t === "name" &&
+        c.v === "not" &&
+        this.toks[this.pos + 1]?.t === "name" &&
+        this.toks[this.pos + 1]!.v === "in"
+      ) {
+        this.pos += 2;
+        left = { k: "cmp", op: "not in", left, right: this.parseArith() };
       }
       return left;
     }
@@ -626,6 +694,24 @@ const runLabel =
         this.eat("]");
         return { k: "list", items };
       }
+      if (c.t === "op" && c.v === "{") {
+        this.pos++;
+        const pairs: { key: Expr; value: Expr }[] = [];
+        while (!this.isOp("}")) {
+          const key = this.parseOr();
+          if (this.isOp(":")) {
+            this.pos++;
+            const value = this.parseOr();
+            pairs.push({ key, value });
+          } else {
+            throw new PyError("SyntaxError", "dict needs key: value pairs", this.lineNo);
+          }
+          if (this.isOp(",")) this.pos++;
+          else break;
+        }
+        this.eat("}");
+        return { k: "dict", pairs };
+      }
       throw new PyError("SyntaxError", "invalid syntax", this.lineNo);
     }
   }
@@ -647,6 +733,16 @@ const runLabel =
     if (typeof v === "number") return String(v);
     if (Array.isArray(v)) return `[${v.map((x) => pyRepr(x as Val)).join(", ")}]`;
     if (typeof v === "object" && "__func" in v) return `<function ${(v as any).__name}>`;
+    if (typeof v === "object" && "__file" in v) {
+      const f = (v as any).__file;
+      return `<file '${f.path}' (mode '${f.mode}')>`;
+    }
+    if (typeof v === "object") {
+      const entries = Object.entries(v).map(
+        ([k, val]) => `${pyRepr(k as Val)}: ${pyRepr(val as Val)}`,
+      );
+      return `{${entries.join(", ")}}`;
+    }
     return String(v);
   }
 
@@ -656,6 +752,7 @@ const runLabel =
     if (typeof v === "number") return v !== 0;
     if (typeof v === "string") return v.length > 0;
     if (Array.isArray(v)) return v.length > 0;
+    if (typeof v === "object") return Object.keys(v).length > 0;
     return true;
   }
 
@@ -666,10 +763,66 @@ const runLabel =
       return Number.isInteger(v) ? "int" : "float";
     if (Array.isArray(v)) return "list";
     if (typeof v === "object" && "__func" in v) return "function";
+    if (typeof v === "object" && "__range" in v) return "range";
+    if (typeof v === "object" && "__file" in v) return "file";
+    if (typeof v === "object") return "dict";
     return "str";
   }
 
   function applyMethod(obj: Val, name: string, args: Val[]): Val {
+    /* file handles */
+    if (obj && typeof obj === "object" && "__file" in obj) {
+      const f = (obj as any).__file;
+      if (name === "write") {
+        if (typeof args[0] !== "string")
+          throw new PyError("TypeError", "write() needs a string");
+        if (f.mode === "r")
+          throw new PyError(
+        "io.UnsupportedOperation",
+            "io.UnsupportedOperation: file opened 'r' — not writable (open with \"w\" to write)",
+          );
+        simFiles[f.path] = (simFiles[f.path] ?? "") + args[0];
+        persistFiles();
+        f.content = simFiles[f.path];
+        return null;
+      }
+      if (name === "read") {
+        if (f.mode !== "r")
+          throw new PyError(
+        "io.UnsupportedOperation",
+            "io.UnsupportedOperation: file opened for writing — not readable (open with \"r\" to read)",
+          );
+        codeFlags.add("fileread");
+        return f.content;
+      }
+      if (name === "readlines") {
+        if (f.mode !== "r")
+          throw new PyError(
+        "io.UnsupportedOperation", "io.UnsupportedOperation: not readable");
+        codeFlags.add("fileread");
+        return f.content.split("\n").filter((l: string) => l.length > 0);
+      }
+      if (name === "close") return null;
+      throw new PyError(
+        "AttributeError",
+        `file objects support write() / read() / readlines() / close() — not '${name}'`,
+      );
+    }
+    /* dicts */
+    if (obj && typeof obj === "object" && !Array.isArray(obj) && !("__func" in obj)) {
+      const d = obj as Record<string, any>;
+      if (name === "get") {
+        const key = String(args[0]);
+        return key in d ? d[key] : (args.length > 1 ? args[1] : null);
+      }
+      if (name === "keys") return Object.keys(d);
+      if (name === "values") return Object.values(d);
+      if (name === "items") return Object.entries(d).map(([k, v]) => [k, v]);
+      throw new PyError(
+        "AttributeError",
+        `dicts support .get() .keys() .values() .items() — not '${name}'`,
+      );
+    }
     if (Array.isArray(obj)) {
       if (name === "append") {
         if (args.length !== 1)
@@ -707,6 +860,20 @@ const runLabel =
           throw new PyError("TypeError", "replace() takes exactly 2 arguments");
         return obj.split(String(args[0])).join(String(args[1]));
       }
+      case "split": {
+        if (args.length > 1)
+          throw new PyError("TypeError", "split() takes at most 1 argument");
+        if (args.length === 1) return obj.split(String(args[0]));
+        return obj.trim().split(/\s+/).filter((w) => w.length > 0);
+      }
+      case "join": {
+        const sep = args[0];
+        if (!Array.isArray(sep))
+          throw new PyError("TypeError", "join() needs a list of strings");
+        if (!sep.every((x) => typeof x === "string"))
+          throw new PyError("TypeError", "join() needs a list of strings");
+        return sep.join(obj);
+      }
     }
     throw new PyError(
       "AttributeError",
@@ -727,6 +894,13 @@ const runLabel =
       }
       case "list": {
         return e.items.map((it: Expr) => evalExpr(it, env, flags));
+      }
+      case "dict": {
+        const d: Record<string, any> = {};
+        for (const p of e.pairs) {
+          d[pyStr(evalExpr(p.key, env, flags))] = evalExpr(p.value, env, flags);
+        }
+        return d;
       }
       case "neg": {
         const v = evalExpr(e.operand, env, flags);
@@ -749,6 +923,20 @@ const runLabel =
             return l === r;
           case "!=":
             return l !== r;
+          case "in":
+          case "not in": {
+            let found = false;
+            if (typeof r === "string") found = typeof l === "string" && r.includes(l);
+            else if (Array.isArray(r)) found = r.some((x) => x === l);
+            else if (r && typeof r === "object" && !Array.isArray(r))
+              found = String(l) in r;
+            else
+              throw new PyError(
+                "TypeError",
+                `argument of type '${typeName(r)}' is not iterable`,
+              );
+            return e.op === "in" ? found : !found;
+          }
         }
         if (typeof l !== typeof r)
           throw new PyError(
@@ -925,7 +1113,36 @@ const runLabel =
           const a = args[0] as Val;
           if (typeof a === "string") return a.length;
           if (Array.isArray(a)) return a.length;
+          if (a && typeof a === "object" && !("__func" in a))
+            return Object.keys(a).length;
           throw new PyError("TypeError", `object of type '${typeName(a)}' has no len()`);
+        }
+        if (fname === "open") {
+          const path = args[0];
+          const mode = args.length > 1 ? args[1] : "r";
+          if (typeof path !== "string" || typeof mode !== "string")
+            throw new PyError("TypeError", "open() needs a file name and a mode string");
+          if (!["r", "w", "a"].includes(mode))
+            throw new PyError(
+              "ValueError",
+              `invalid mode: '${mode}' — this simulator supports r, w, a`,
+            );
+          if (mode === "r" && !(path in simFiles))
+            throw new PyError(
+              "FileNotFoundError",
+              `[Errno 2] No such file or directory: '${path}'`,
+            );
+          if (mode === "w") {
+            simFiles[path] = "";
+            persistFiles();
+          }
+          return {
+            __file: {
+              path,
+              mode,
+              content: mode === "w" ? "" : (simFiles[path] ?? ""),
+            },
+          } as any;
         }
         if (fname === "round") {
           const a = args[0] as Val;
@@ -995,7 +1212,16 @@ const runLabel =
             throw new PyError("IndexError", "list index out of range");
           return obj[i2] as Val;
         }
-        throw new PyError("TypeError", "only strings and lists can be indexed in this simulator");
+        if (obj && typeof obj === "object" && !Array.isArray(obj) && !("__func" in obj)) {
+          const key = String(idx);
+          if (!(key in obj))
+            throw new PyError("KeyError", `'${key}'`);
+          return obj[key]!;
+        }
+        throw new PyError(
+          "TypeError",
+          "strings, lists and dicts can be indexed in this simulator",
+        );
       }
       case "slice": {
         const obj = evalExpr(e.obj, env, flags);
@@ -1018,6 +1244,22 @@ const runLabel =
      pass even when the program later changes a variable (like yen) */
   let envSeen: Record<string, Set<string>> = {};
   let loopBudget = 10000;
+
+  /* fake file system — persists between runs via localStorage */
+  let simFiles: Record<string, string> = {};
+  try {
+    simFiles = JSON.parse(
+      (globalThis as any).localStorage?.getItem?.("msa-py-files") ?? "{}",
+    );
+  } catch {}
+  function persistFiles(): void {
+    try {
+      (globalThis as any).localStorage?.setItem?.(
+        "msa-py-files",
+        JSON.stringify(simFiles),
+      );
+    } catch {}
+  }
 
   function runStmts(stmts: Stmt[], env: Record<string, Val>, flags: Set<string>): void {
     for (const st of stmts) {
@@ -1069,6 +1311,8 @@ const runLabel =
           values = it.split("");
         } else if (Array.isArray(it)) {
           values = [...it];
+        } else if (it && typeof it === "object" && !("__func" in it)) {
+          values = Object.keys(it);
         } else {
           throw new PyError("TypeError", `'${typeName(it)}' object is not iterable`, st.lineNo);
         }
@@ -1087,6 +1331,41 @@ const runLabel =
       }
       if (st.kind === "def") {
         env[st.name!] = { __func: { params: st.params, body: st.body }, __name: st.name } as any;
+        continue;
+      }
+      if (st.kind === "assignindex") {
+        if (!(st.name! in env))
+          throw new PyError("NameError", `name '${st.name}' is not defined`);
+        const obj = env[st.name!];
+        const key = evalExpr(st.idx!, env, flags);
+        const v = evalExpr(st.expr!, env, flags);
+        if (Array.isArray(obj)) {
+          if (typeof key !== "number" || !Number.isInteger(key))
+            throw new PyError("TypeError", "list indices must be integers");
+          const i2 = key < 0 ? obj.length + key : key;
+          if (i2 < 0 || i2 >= obj.length)
+            throw new PyError("IndexError", "list assignment index out of range");
+          obj[i2] = v;
+        } else if (obj && typeof obj === "object" && !("__func" in obj)) {
+          obj[String(key)] = v;
+        } else {
+          throw new PyError(
+            "TypeError",
+            `'${typeName(obj)}' object does not support item assignment`,
+          );
+        }
+        continue;
+      }
+      if (st.kind === "with") {
+        const handle = evalExpr(st.openExpr!, env, flags);
+        if (!handle || typeof handle !== "object" || !("__file" in handle))
+          throw new PyError(
+            "TypeError",
+            "'with' in this simulator supports open(file, mode)",
+            st.lineNo,
+          );
+        env[st.var!] = handle;
+        runStmts(st.body!, env, flags);
         continue;
       }
       if (st.kind === "return") {
@@ -1155,6 +1434,37 @@ const runLabel =
       lastOutput.some((l) => l.includes("total: 28000")) &&
       lastOutput.some((l) => l.includes("average: 4000")) &&
       lastOutput.some((l) => l.includes("best day: 7")),
+    /* week 5: data structures and files */
+    d1: () => Array.isArray(env.expenses),
+    d2: () =>
+      Array.isArray(env.expenses) &&
+      env.expenses.some((x: any) => String(x).includes("coffee")),
+    d3: () =>
+      Array.isArray(env.expenses) &&
+      env.expenses.length === 3 &&
+      env.expenses.some((x: any) => String(x).includes("train")) &&
+      env.expenses.some((x: any) => String(x).includes("lunch")),
+    d4: () =>
+      codeFlags.has("for") &&
+      ["coffee", "train", "lunch"].every((w) =>
+        lastOutput.some((l) => l.includes(w)),
+      ),
+    d5: () =>
+      !!env.expense &&
+      typeof env.expense === "object" &&
+      !Array.isArray(env.expense) &&
+      !("__func" in env.expense) &&
+      lastOutput.some((l) => l.includes("coffee: 500 yen")),
+    d6: () => {
+      const c = simFiles["expenses.txt"] ?? simFiles["expenses.csv"] ?? "";
+      return ["coffee", "train", "lunch"].every((w) => c.includes(w));
+    },
+    d7: () =>
+      codeFlags.has("fileread") &&
+      ["coffee", "train", "lunch"].every((w) =>
+        lastOutput.some((l) => l.includes(w)),
+      ),
+    d8: () => lastOutput.some((l) => l.includes("total: 3400")),
   };
 
   function print(text: string, cls?: string): void {
@@ -1234,15 +1544,24 @@ const runLabel =
     codeFlags = new Set();
     lastOutput = [];
     allDoneShown = false;
+    simFiles = {};
+    persistFiles();
     missionEls.forEach((el, i) => {
       delete el.dataset.done;
       delete el.dataset.active;
       if (i === 0) el.dataset.active = "true";
       el.querySelector(".mission-hint")?.removeAttribute("open");
     });
-    print("reset — write a program on the left, press Run", "term-info");
+    print("reset — editor, memory and FILES cleared (reset deletes the fake disk)", "term-info");
   });
 
-  print("mini-python — variables, numbers, strings, f-strings, if/elif/else", "term-info");
+  print(
+    "mini-python — variables, strings, if/elif/else, loops, functions, lists, dicts, files",
+    "term-info",
+  );
+  print(
+    "files (open / write / read) persist between runs — like a real disk. Variables don't.",
+    "term-info",
+  );
   print("write a program in the editor and press Run", "term-info");
 </script>

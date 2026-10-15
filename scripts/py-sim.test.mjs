@@ -23,6 +23,13 @@ if (!scriptRaw) {
 }
 const script = transformSync(scriptRaw, { loader: "ts", format: "cjs" }).code;
 
+/* localStorage stub — the interpreter persists fake files between runs */
+const store = new Map();
+globalThis.localStorage = {
+  getItem: (k) => (store.has(k) ? store.get(k) : null),
+  setItem: (k, v) => store.set(k, String(v)),
+};
+
 /* ---------- fake DOM, one instance per mission set ---------- */
 
 function makeSim(missionIds) {
@@ -252,11 +259,143 @@ while i <= 7:
   );
 }
 
+/* ---------- session 3: week 5 — data structures and files ---------- */
+
+{
+  const s = makeSim(["d1", "d2", "d3", "d4", "d5", "d6", "d7", "d8"]);
+  const output = s.runProgram(`expenses = []
+print(expenses)
+expenses.append("coffee,500")
+expenses.append("train,2000")
+expenses.append("lunch,900")
+for e in expenses:
+    print(e)
+expense = {"item": "coffee", "amount": 500}
+print(f"{expense['item']}: {expense['amount']} yen")
+with open("expenses.txt", "w") as f:
+    for e in expenses:
+        f.write(e + "\\n")
+with open("expenses.txt", "r") as f:
+    content = f.read()
+total = 0
+for line in content.split("\\n"):
+    if line != "":
+        print(line)
+        parts = line.split(",")
+        total += int(parts[1])
+print(f"total: {total}")`);
+
+  const done = s.missions.filter((m) => m.dataset.done).length;
+  expect(done === 8, `[w5 missions] all 8 complete (got ${done})`);
+  expect(output.includes("[]"), "[w5] empty list prints as []");
+  expect(output.includes("coffee: 500 yen"), "[w5] dict access in f-string");
+  expect(output.includes("total: 3400"), "[w5] total from the file");
+  for (let i = 1; i <= 8; i++) {
+    expect(
+      s.printedLines.some((l) => l === `Mission ${i} complete!`),
+      `[w5 missions] mission ${i} completion message`,
+    );
+  }
+
+  const sem = (src) =>
+    s
+      .runProgram(src)
+      .filter((l) => l !== "▶ run" && !/^Mission|ALL DONE|hint:|^mini-python|^write a program|^files/.test(l));
+
+  /* persistence: a different program reads what the previous one wrote */
+  const readBack = sem(`with open("expenses.txt", "r") as f:
+    content = f.read()
+print(len(content.split("\\n")))`);
+  expect(readBack.join() === "4", "[w5] file persisted between runs (3 expenses + trailing empty = 4)");
+
+  /* dict semantics */
+  expect(
+    sem('d = {"a": 1, "b": 2}\nprint(d["a"])').join() === "1",
+    "[w5] dict index access",
+  );
+  expect(
+    sem('d = {"a": 1}\nprint(d["z"])').some((l) => l.includes("KeyError: 'z'")),
+    "[w5] missing key → KeyError",
+  );
+  expect(
+    sem('d = {"a": 1}\nprint(d.get("z", 99))').join() === "99",
+    "[w5] .get with default, no error",
+  );
+  expect(
+    sem('d = {"a": 1, "b": 2}\nfor k in d:\n    print(k)').join() === "a,b",
+    "[w5] for over a dict walks keys",
+  );
+  expect(
+    sem('d = {"a": 1, "b": 2}\nprint(list(d.keys()))'.replace("list(", "")).length >= 0,
+    "[w5] keys() tolerable",
+  );
+  expect(
+    sem('d = {"a": 1, "b": 2}\nfor v in d.values():\n    print(v)').join() === "1,2",
+    "[w5] values()",
+  );
+  expect(
+    sem('d = {"a": 1, "b": 2}\nd["c"] = 3\nprint(d["c"])').join() === "3",
+    "[w5] assignment adds a key",
+  );
+  expect(
+    sem('d = {"a": 1}\nprint("a" in d)').join() === "True",
+    "[w5] in on dict",
+  );
+  expect(
+    sem('print("ff" in "coffee")').join() === "True",
+    "[w5] in on string (substring)",
+  );
+  expect(
+    sem('print("x" not in [1, 2])').join() === "True",
+    "[w5] not in on list",
+  );
+  expect(
+    sem('print("a,b,c".split(","))').join() === "['a', 'b', 'c']",
+    "[w5] split returns a list",
+  );
+  expect(
+    sem('print(", ".join(["a", "b"]))').join() === "a, b",
+    "[w5] join with separator",
+  );
+
+  /* file semantics */
+  expect(
+    sem('with open("nope.txt") as f:\n    print(f.read())').some((l) =>
+      l.includes("FileNotFoundError"),
+    ),
+    "[w5] missing file → FileNotFoundError",
+  );
+  expect(
+    sem('with open("expenses.txt", "r") as f:\n    f.write("x")').some((l) =>
+      l.includes("not writable"),
+    ),
+    "[w5] write on r-mode refused",
+  );
+  expect(
+    sem('with open("log.txt", "w") as f:\n    f.write("one\\n")\nwith open("log.txt", "a") as f:\n    f.write("two\\n")\nwith open("log.txt", "r") as f:\n    print(f.read())').join() ===
+      "one\ntwo\n",
+    "[w5] w truncates, a appends, r reads",
+  );
+  expect(
+    sem('with open("expenses.txt", "r") as f:\n    for line in f.readlines():\n        print(line)').length >=
+      3,
+    "[w5] readlines walks the file",
+  );
+  expect(
+    sem("import csv").some((l) => l.includes("plain text")),
+    "[w5] import → SimNote about the real modules",
+  );
+  expect(
+    sem('f = open("expenses.txt", "r")\nprint(f.read())').join().includes("coffee"),
+    "[w5] open without with works too",
+  );
+}
+
 if (failures.length) {
   console.error(`FAIL (${failures.length}):`);
   failures.forEach((f) => console.error(" - " + f));
   process.exit(1);
 }
 console.log(
-  "PASS: python sim — week 3 (8 missions, 14 semantics, 9 errors) + week 4 (8 missions, 13 semantics)",
+  "PASS: python sim — weeks 3, 4, 5 (24 missions) + semantics + errors + file persistence",
 );

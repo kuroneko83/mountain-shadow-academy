@@ -207,6 +207,7 @@ export const curriculumJa: Curriculum = {
       title: "データ構造とファイル",
       phase: "python",
       why: "本物のプログラムはデータを手元に残します：リストや辞書で保持し、ファイルに保存する。今週から、あなたのプログラムは終了してもすべてを忘れなくなります。",
+      guide: "data-files",
       objectives: [
         "list、dict、tupleの中から適切な構造を選べる。",
         "テキストファイルとCSVファイルを読み書きできる。",
