@@ -1,0 +1,27 @@
+---
+import { BASE } from "../utils";
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Mountain Shadow Academy</title>
+    <script is:inline define:vars={{ base: BASE.replace(/\/$/, "") }}>
+      var lang = (navigator.language || "").toLowerCase();
+      var target = lang.indexOf("ja") === 0 ? "ja" : lang.indexOf("uz") === 0 ? "uz" : "en";
+      window.location.replace(base + "/" + target + "/");
+    </script>
+    <noscript>
+      <meta http-equiv="refresh" content={`0; url=${BASE.replace(/\/$/, "")}/en/`} />
+    </noscript>
+  </head>
+  <body>
+    <p>
+      <a href={`${BASE.replace(/\/$/, "")}/en/`}>English</a> ·
+      <a href={`${BASE.replace(/\/$/, "")}/ja/`}>日本語</a> ·
+      <a href={`${BASE.replace(/\/$/, "")}/uz/`}>O‘zbekcha</a>
+    </p>
+  </body>
+</html>

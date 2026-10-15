@@ -1,0 +1,17 @@
+---
+import Base from "../layouts/Base.astro";
+import { href } from "../utils";
+
+const links = [
+  { url: "/en/", label: "English" },
+  { url: "/ja/", label: "日本語" },
+  { url: "/uz/", label: "O‘zbekcha" },
+] as const;
+---
+
+<Base lang="en" title="404">
+  <h1>404</h1>
+  <ul>
+    {links.map((l) => <li><a href={href(l.url)}>{l.label}</a></li>)}
+  </ul>
+</Base>

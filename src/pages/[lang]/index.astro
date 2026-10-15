@@ -1,0 +1,122 @@
+---
+import Base from "../../layouts/Base.astro";
+import { LANGS } from "../../data/types";
+import type { Lang } from "../../data/types";
+import { UI } from "../../data/ui";
+import { getCurriculum } from "../../data";
+import { href } from "../../utils";
+
+export function getStaticPaths() {
+  return LANGS.map((lang) => ({ params: { lang } }));
+}
+
+const { lang } = Astro.params as { lang: Lang };
+const t = UI[lang];
+const c = getCurriculum(lang);
+---
+
+<Base lang={lang} title={t.nav.home}>
+  <section class="hero">
+    <p class="eyebrow">{t.siteName}</p>
+    <h1>{t.hero.heading}</h1>
+    <p>{t.hero.body}</p>
+    <div>
+      <a class="btn" href={href(`/${lang}/curriculum/`)}>{t.hero.cta}</a>
+    </div>
+  </section>
+
+  <div class="home-grid">
+    <div class="card">
+      <h2>{t.hero.audienceTitle}</h2>
+      <ul>
+        {t.hero.audience.map((item) => <li>{item}</li>)}
+      </ul>
+    </div>
+    <div class="card">
+      <h2>{t.hero.howTitle}</h2>
+      <ul>
+        {t.hero.how.map((item) => <li>{item}</li>)}
+      </ul>
+    </div>
+  </div>
+
+  <section class="phase phase-1">
+    <div class="phase-head">
+      <h2>{c.phases[0].name}</h2>
+    </div>
+    <p class="phase-desc">{c.phases[0].description}</p>
+    <div class="week-grid">
+      {
+        c.weeks.slice(0, 3).map((w) => (
+          <a class="card week-card" href={href(`/${lang}/week/${w.slug}/`)}>
+            <span class="week-num">
+              {t.weekPage.weekLabel} {w.slug.slice(0, 2)}
+            </span>
+            <h3>{w.title}</h3>
+            <p>{w.project.title}</p>
+          </a>
+        ))
+      }
+    </div>
+  </section>
+
+  <section class="phase phase-2">
+    <div class="phase-head">
+      <h2>{c.phases[1].name}</h2>
+    </div>
+    <p class="phase-desc">{c.phases[1].description}</p>
+    <div class="week-grid">
+      {
+        c.weeks.slice(3, 7).map((w) => (
+          <a class="card week-card" href={href(`/${lang}/week/${w.slug}/`)}>
+            <span class="week-num">
+              {t.weekPage.weekLabel} {w.slug.slice(0, 2)}
+            </span>
+            <h3>{w.title}</h3>
+            <p>{w.project.title}</p>
+          </a>
+        ))
+      }
+    </div>
+  </section>
+
+  <section class="phase phase-3">
+    <div class="phase-head">
+      <h2>{c.phases[2].name}</h2>
+    </div>
+    <p class="phase-desc">{c.phases[2].description}</p>
+    <div class="week-grid">
+      {
+        c.weeks.slice(7, 10).map((w) => (
+          <a class="card week-card" href={href(`/${lang}/week/${w.slug}/`)}>
+            <span class="week-num">
+              {t.weekPage.weekLabel} {w.slug.slice(0, 2)}
+            </span>
+            <h3>{w.title}</h3>
+            <p>{w.project.title}</p>
+          </a>
+        ))
+      }
+    </div>
+  </section>
+
+  <section class="phase phase-4">
+    <div class="phase-head">
+      <h2>{c.phases[3].name}</h2>
+    </div>
+    <p class="phase-desc">{c.phases[3].description}</p>
+    <div class="week-grid">
+      {
+        c.weeks.slice(10, 12).map((w) => (
+          <a class="card week-card" href={href(`/${lang}/week/${w.slug}/`)}>
+            <span class="week-num">
+              {t.weekPage.weekLabel} {w.slug.slice(0, 2)}
+            </span>
+            <h3>{w.title}</h3>
+            <p>{w.project.title}</p>
+          </a>
+        ))
+      }
+    </div>
+  </section>
+</Base>

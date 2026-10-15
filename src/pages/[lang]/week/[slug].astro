@@ -1,0 +1,102 @@
+---
+import Base from "../../../layouts/Base.astro";
+import { LANGS, LANG_LABEL } from "../../../data/types";
+import type { Lang } from "../../../data/types";
+import { UI } from "../../../data/ui";
+import { getCurriculum, getWeek, getWeekIndex } from "../../../data";
+import { BASE, href } from "../../../utils";
+
+export function getStaticPaths() {
+  return LANGS.flatMap((lang) => {
+    const weeks = getCurriculum(lang).weeks;
+    return weeks.map((w) => ({ params: { lang, slug: w.slug } }));
+  });
+}
+
+const { lang, slug } = Astro.params as { lang: Lang; slug: string };
+const t = UI[lang];
+const c = getCurriculum(lang);
+const idx = getWeekIndex(lang, slug);
+const week = getWeek(lang, slug);
+
+if (!week || idx < 0) {
+  return Astro.redirect(`${BASE.replace(/\/$/, "")}/${lang}/curriculum/`);
+}
+
+const phase = c.phases.find((p) => p.id === week.phase);
+const prev = idx > 0 ? c.weeks[idx - 1] : undefined;
+const next = idx < c.weeks.length - 1 ? c.weeks[idx + 1] : undefined;
+const num = week.slug.slice(0, 2);
+
+const phaseClass: Record<string, string> = {
+  foundations: "phase-1",
+  python: "phase-2",
+  data: "phase-3",
+  capstone: "phase-4",
+};
+---
+
+<Base lang={lang} title={`${t.weekPage.weekLabel} ${num} — ${week.title}`}>
+  <a class="back-link" href={href(`/${lang}/curriculum/`)}>← {t.weekPage.back}</a>
+  <div class={`week-header ${phaseClass[week.phase]}`}>
+    <p class="eyebrow">
+      {phase?.name} · {t.weekPage.weekLabel} {num} / {String(c.weeks.length).padStart(2, "0")}
+    </p>
+    <h1>{week.title}</h1>
+    <p class="why">{week.why}</p>
+  </div>
+
+  <section class="week-section">
+    <h2>{t.weekPage.objectivesLabel}</h2>
+    <ul class="objectives">
+      {week.objectives.map((o) => <li>{o}</li>)}
+    </ul>
+  </section>
+
+  <section class="week-section">
+    <h2>{t.weekPage.topicsLabel}</h2>
+    <ul class="topics">
+      {week.topics.map((topic) => <li>{topic}</li>)}
+    </ul>
+  </section>
+
+  <section class={`week-section card project ${phaseClass[week.phase]}`}>
+    <h2>{t.weekPage.projectLabel}</h2>
+    <h3>{week.project.title}</h3>
+    <p class="desc">{week.project.description}</p>
+    <ol>
+      {week.project.steps.map((step) => <li>{step}</li>)}
+    </ol>
+  </section>
+
+  <section class="week-section">
+    <h2>{t.weekPage.resourcesLabel}</h2>
+    <ul class="resource-list">
+      {
+        week.resources.map((r) => (
+          <li>
+            <a href={r.url} rel="noopener">
+              {r.title}
+            </a>
+            {r.note && <span class="note">{r.note}</span>}
+          </li>
+        ))
+      }
+    </ul>
+  </section>
+
+  <nav class="week-nav">
+    {
+      prev ? (
+        <a href={href(`/${lang}/week/${prev.slug}/`)}>← {t.weekPage.prev}</a>
+      ) : (
+        <span />
+      )
+    }
+    {next && <a class="next" href={href(`/${lang}/week/${next.slug}/`)}>{t.weekPage.next} →</a>}
+  </nav>
+
+  <aside class="week-section" aria-label="Languages">
+    <p class="eyebrow">{LANG_LABEL[lang]}</p>
+  </aside>
+</Base>

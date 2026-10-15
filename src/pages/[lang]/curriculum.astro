@@ -1,0 +1,58 @@
+---
+import Base from "../../layouts/Base.astro";
+import { LANGS } from "../../data/types";
+import type { Lang } from "../../data/types";
+import { UI } from "../../data/ui";
+import { getCurriculum } from "../../data";
+import { href } from "../../utils";
+
+export function getStaticPaths() {
+  return LANGS.map((lang) => ({ params: { lang } }));
+}
+
+const { lang } = Astro.params as { lang: Lang };
+const t = UI[lang];
+const c = getCurriculum(lang);
+
+const phaseClass: Record<string, string> = {
+  foundations: "phase-1",
+  python: "phase-2",
+  data: "phase-3",
+  capstone: "phase-4",
+};
+---
+
+<Base lang={lang} title={t.curriculumPage.heading} description={t.tagline}>
+  <p class="eyebrow">{t.siteName}</p>
+  <h1>{t.curriculumPage.heading}</h1>
+  <p style="color: var(--ink-soft); max-width: 46rem;">{t.curriculumPage.intro}</p>
+  <p class="free-note">
+    {t.curriculumPage.hoursLabel}: {t.curriculumPage.hoursNote}
+  </p>
+
+  {
+    c.phases.map((phase) => (
+      <section class={`phase ${phaseClass[phase.id]}`}>
+        <div class="phase-head">
+          <h2>{phase.name}</h2>
+        </div>
+        <p class="phase-desc">{phase.description}</p>
+        <div class="week-grid">
+          {c.weeks
+            .filter((w) => w.phase === phase.id)
+            .map((w) => (
+              <a class="card week-card" href={href(`/${lang}/week/${w.slug}/`)}>
+                <span class="week-num">
+                  {t.weekPage.weekLabel} {w.slug.slice(0, 2)}
+                </span>
+                <h3>{w.title}</h3>
+                <p>
+                  {t.curriculumPage.projectLabel}: {w.project.title}
+                </p>
+              </a>
+            ))}
+        </div>
+      </section>
+    ))
+  }
+</Base>

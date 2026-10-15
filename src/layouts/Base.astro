@@ -1,0 +1,81 @@
+---
+import "../styles/global.css";
+import { LANGS, LANG_LABEL } from "../data/types";
+import type { Lang } from "../data/types";
+import { UI } from "../data/ui";
+import { swapLang } from "../data";
+import { BASE, href } from "../utils";
+
+interface Props {
+  lang: Lang;
+  title: string;
+  description?: string;
+}
+
+const { lang, title, description } = Astro.props;
+const t = UI[lang];
+const basePrefix = BASE.replace(/\/$/, "");
+const here = Astro.url.pathname.startsWith(basePrefix)
+  ? Astro.url.pathname.slice(basePrefix.length)
+  : Astro.url.pathname;
+const isHome = here === `/${lang}/` || here === `/${lang}`;
+const isCurriculum = here.startsWith(`/${lang}/curriculum`);
+const isResources = here.startsWith(`/${lang}/resources`);
+---
+
+<!doctype html>
+<html lang={lang}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description ?? t.tagline} />
+    <meta name="generator" content={Astro.generator} />
+    <title>{`${title} — ${t.siteName}`}</title>
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="site-header-inner">
+        <a class="brand" href={href(`/${lang}/`)}>
+          {t.siteName}
+          <small>{t.tagline}</small>
+        </a>
+        <nav class="site-nav">
+          <a href={href(`/${lang}/`)} aria-current={isHome ? "page" : undefined}>
+            {t.nav.home}
+          </a>
+          <a
+            href={href(`/${lang}/curriculum/`)}
+            aria-current={isCurriculum ? "page" : undefined}
+          >
+            {t.nav.curriculum}
+          </a>
+          <a
+            href={href(`/${lang}/resources/`)}
+            aria-current={isResources ? "page" : undefined}
+          >
+            {t.nav.resources}
+          </a>
+          <div class="lang-switch" role="group" aria-label="Language">
+            {
+              LANGS.map((l) => (
+                <a
+                  href={href(swapLang(here, l))}
+                  aria-current={l === lang ? "true" : undefined}
+                >
+                  {LANG_LABEL[l]}
+                </a>
+              ))
+            }
+          </div>
+        </nav>
+      </div>
+    </header>
+    <main>
+      <slot />
+    </main>
+    <footer class="site-footer">
+      <div>{t.footer.org}</div>
+      <div>{t.footer.note}</div>
+    </footer>
+  </body>
+</html>

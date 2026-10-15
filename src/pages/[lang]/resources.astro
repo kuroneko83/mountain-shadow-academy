@@ -1,0 +1,53 @@
+---
+import Base from "../../layouts/Base.astro";
+import { LANGS } from "../../data/types";
+import type { Lang, Resource } from "../../data/types";
+import { UI } from "../../data/ui";
+import { getCurriculum } from "../../data";
+
+export function getStaticPaths() {
+  return LANGS.map((lang) => ({ params: { lang } }));
+}
+
+const { lang } = Astro.params as { lang: Lang };
+const t = UI[lang];
+const c = getCurriculum(lang);
+
+const seen = new Set<string>();
+const unique = (r: Resource) => {
+  if (seen.has(r.url)) return false;
+  seen.add(r.url);
+  return true;
+};
+---
+
+<Base lang={lang} title={t.resourcesPage.heading}>
+  <p class="eyebrow">{t.siteName}</p>
+  <h1>{t.resourcesPage.heading}</h1>
+  <p style="color: var(--ink-soft); max-width: 46rem;">{t.resourcesPage.intro}</p>
+  <p class="free-note">{t.resourcesPage.freeNote}</p>
+
+  {
+    c.phases.map((phase) => {
+      const phaseWeeks = c.weeks.filter((w) => w.phase === phase.id);
+      const resources = phaseWeeks
+        .flatMap((w) => w.resources)
+        .filter(unique);
+      return (
+        <section class="res-group">
+          <h2>{phase.name}</h2>
+          <ul class="resource-list">
+            {resources.map((r) => (
+              <li>
+                <a href={r.url} rel="noopener">
+                  {r.title}
+                </a>
+                {r.note && <span class="note">{r.note}</span>}
+              </li>
+            ))}
+          </ul>
+        </section>
+      );
+    })
+  }
+</Base>
