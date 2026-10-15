@@ -52,6 +52,7 @@ export const UI: Record<Lang, UI> = {
       lessonLabel: "Lesson",
       cheatLabel: "Cheat sheet",
       commandCol: "Command",
+      resultCol: "What you see",
       forWeek: "For Week {n}",
     },
     practice: {
@@ -136,6 +137,7 @@ export const UI: Record<Lang, UI> = {
       lessonLabel: "レッスン",
       cheatLabel: "チートシート",
       commandCol: "コマンド",
+      resultCol: "表示されるもの",
       forWeek: "第{n}週のガイド",
     },
     practice: {
@@ -220,6 +222,7 @@ export const UI: Record<Lang, UI> = {
       lessonLabel: "Darslik",
       cheatLabel: "Tezkor jadval",
       commandCol: "Buyruq",
+      resultCol: "Koʻrinadigan natija",
       forWeek: "{n}-hafta uchun",
     },
     practice: {

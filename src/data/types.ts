@@ -58,6 +58,8 @@ export interface CheatRow {
   /** only when the command differs per platform */
   win?: string;
   linux?: string;
+  /** what you see after running it — omitted where it depends on state or variables */
+  result?: string;
 }
 
 export interface Mission {

@@ -945,3 +945,13 @@ td:nth-child(n+2) {
   min-height: 9rem;
   max-height: 20rem;
 }
+
+td.cheat-result {
+  color: var(--ink-soft);
+  font-size: 0.82rem;
+}
+
+td.cheat-none {
+  color: var(--ink-faint);
+  text-align: center;
+}

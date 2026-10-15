@@ -85,57 +85,68 @@ const servedWeek = guide.week ? getWeek(lang, guide.week) : undefined;
   }
 
   {
-    guide.cheatSheet && (
-      <section class="guide-section">
-        <h2>{t.guidesPage.cheatLabel}</h2>
-        <div class="table-wrap">
-          <table>
-            {
-              guide.cheatSheet.rows.some((r) => r.win !== undefined) ? (
+    guide.cheatSheet &&
+      (() => {
+        const rows = guide.cheatSheet.rows;
+        const platformRows = rows.some((r) => r.win !== undefined);
+        const hasResultCol = rows.some((r) => r.result !== undefined);
+        return (
+          <section class="guide-section">
+            <h2>{t.guidesPage.cheatLabel}</h2>
+            <div class="table-wrap">
+              <table>
                 <thead>
                   <tr>
                     <th>{guide.cheatSheet.heading}</th>
-                    <th>Windows (PowerShell)</th>
-                    <th>Linux / macOS</th>
+                    {
+                      platformRows ? (
+                        <>
+                          <th>Windows (PowerShell)</th>
+                          <th>Linux / macOS</th>
+                        </>
+                      ) : (
+                        <th>{t.guidesPage.commandCol}</th>
+                      )
+                    }
+                    {hasResultCol && <th>{t.guidesPage.resultCol}</th>}
                   </tr>
                 </thead>
-              ) : (
-                <thead>
-                  <tr>
-                    <th>{guide.cheatSheet.heading}</th>
-                    <th>{t.guidesPage.commandCol}</th>
-                  </tr>
-                </thead>
-              )
-            }
-            <tbody>
-              {
-                guide.cheatSheet.rows.map((r) =>
-                  r.win !== undefined ? (
-                    <tr>
-                      <td>{r.action}</td>
-                      <td>
-                        <code>{r.win}</code>
-                      </td>
-                      <td>
-                        <code>{r.linux}</code>
-                      </td>
-                    </tr>
-                  ) : (
-                    <tr>
-                      <td>{r.action}</td>
-                      <td colspan={guide.cheatSheet.rows.some((x) => x.win !== undefined) ? 2 : 1}>
-                        <code>{r.command}</code>
-                      </td>
-                    </tr>
-                  ),
-                )
-              }
-            </tbody>
-          </table>
-        </div>
-      </section>
-    )
+                <tbody>
+                  {
+                    rows.map((r) => (
+                      <tr>
+                        <td>{r.action}</td>
+                        {
+                          r.win !== undefined ? (
+                            <>
+                              <td>
+                                <code>{r.win}</code>
+                              </td>
+                              <td>
+                                <code>{r.linux}</code>
+                              </td>
+                            </>
+                          ) : (
+                            <td colspan={platformRows ? 2 : undefined}>
+                              <code>{r.command}</code>
+                            </td>
+                          )
+                        }
+                        {hasResultCol &&
+                          (r.result ? (
+                            <td class="cheat-result">{r.result}</td>
+                          ) : (
+                            <td class="cheat-none">—</td>
+                          ))}
+                      </tr>
+                    ))
+                  }
+                </tbody>
+              </table>
+            </div>
+          </section>
+        );
+      })()
   }
 
   {
