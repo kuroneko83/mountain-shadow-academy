@@ -297,6 +297,7 @@ export const curriculumEn: Curriculum = {
       title: "Mini-project: market-watch",
       phase: "python",
       why: "One week to consolidate: turn the fetch script into a small, reliable tool and start using it daily. Repetition is how syntax stops being scary and starts being automatic.",
+      guide: "market-watch",
       objectives: [
         "Structure a repo like a real project (folders, README, separate steps).",
         "Turn a raw fetch script into a daily report generator.",

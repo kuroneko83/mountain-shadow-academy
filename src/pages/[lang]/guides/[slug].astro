@@ -25,7 +25,7 @@ if (!guide) {
 }
 
 const sim = guide.slug === "git" ? "git" : "command-line";
-const PYTHON_GUIDES = ["python-basics", "python-loops", "data-files", "requests-api"];
+const PYTHON_GUIDES = ["python-basics", "python-loops", "data-files", "requests-api", "market-watch"];
 const usesPythonSim = PYTHON_GUIDES.includes(guide.slug);
 const servedWeek = guide.week ? getWeek(lang, guide.week) : undefined;
 ---

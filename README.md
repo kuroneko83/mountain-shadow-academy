@@ -7,7 +7,7 @@ Free 12-week study path — Python, scripting, and data engineering from absolut
 ## What it is
 
 - 4 phases, 12 weeks, one applied project per week (~4–6 h/week, evening pace)
-- **Deep-dive guides** (`/guides/`) with plain-language lessons, examples, an interactive simulator with auto-checked missions, and a **quiz** — currently: *The command line* (Week 1), *Git & GitHub* (Week 2), *Python I* (Week 3), *Python II* (Week 4), *Data structures & files* (Week 5, files persist between runs) and *Requests & APIs* (Week 6, with a fake internet: real Frankfurter endpoints, a 404 typo URL, a flaky endpoint for retry practice, and try/except/finally). Cheat sheets show a Command column plus a "What you see" result column, with the Windows/Linux split only where commands actually differ. Each guide is labeled with the week it serves; more guides to come.
+- **Deep-dive guides** (`/guides/`) with plain-language lessons, examples, an interactive simulator with auto-checked missions, and a **quiz** — currently: *The command line* (Week 1), *Git & GitHub* (Week 2), *Python I* (Week 3), *Python II* (Week 4), *Data structures & files* (Week 5, files persist between runs), *Requests & APIs* (Week 6, fake internet with Frankfurter endpoints) and *market-watch* (Week 7, 30-day history endpoint, min/max/sum, full stats pipeline). Cheat sheets show a Command column plus a "What you see" result column, with the Windows/Linux split only where commands actually differ. Each guide is labeled with the week it serves; more guides to come.
 - 100% free learning resources (freeCodeCamp, Kaggle Learn, SQLBolt, Automate the Boring Stuff, Pro Git, Frankfurter API, ...)
 - Final outcome: a public GitHub portfolio with 4+ repos and a deployed market-data pipeline report
 

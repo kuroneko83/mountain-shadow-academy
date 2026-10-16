@@ -161,7 +161,7 @@ export const guideLoopsEn: Guide = {
     },
     {
       id: "l3",
-      prompt: "Write a function total(values) that adds the list with a loop (no built-in sum() — that's Week 8's reward) and returns the result. Print total(volumes) — 28000.",
+      prompt: "Write a function total(values) that adds the list with a loop (no built-in sum() — that's Week 7's reward) and returns the result. Print total(volumes) — 28000.",
       hint: "result = 0 BEFORE the loop, result += v INSIDE it, return result at the end. print(total(volumes))",
     },
     {

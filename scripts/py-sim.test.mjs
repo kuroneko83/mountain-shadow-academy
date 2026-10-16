@@ -521,11 +521,108 @@ print(content)`);
   );
 }
 
+/* ---------- session 5: week 7 — market-watch (history + stats) ---------- */
+
+{
+  const s = makeSim(["s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8"]);
+  const output = s.runProgram(`import requests
+url = "https://api.frankfurter.app/2026-09-16..2026-10-15?from=USD&to=JPY"
+response = requests.get(url)
+data = response.json()
+print(len(data["rates"]))
+values = []
+dates = []
+for date in data["rates"]:
+    values.append(data["rates"][date]["JPY"])
+    dates.append(date)
+print(f"min: {min(values)}")
+print(f"max: {max(values)}")
+mean = sum(values) / len(values)
+print(f"mean: {mean:.2f}")
+total = 0
+for v in values:
+    total += (v - mean) ** 2
+std = (total / len(values)) ** 0.5
+print(f"std: {std:.2f}")
+biggest = 0
+biggest_date = ""
+for i in range(1, len(values)):
+    change = values[i] - values[i - 1]
+    if abs(change) > abs(biggest):
+        biggest = change
+        biggest_date = dates[i]
+print(f"biggest move: {biggest_date} ({biggest:.2f})")
+
+def report(values):
+    lines = []
+    lines.append("USD/JPY 30-day report")
+    lines.append(f"min: {min(values)}")
+    lines.append(f"max: {max(values)}")
+    lines.append(f"mean: {sum(values) / len(values):.2f}")
+    return "\\n".join(lines)
+
+text = report(values)
+print(text)
+with open("report.txt", "w") as f:
+    f.write(text)`);
+
+  const done = s.missions.filter((m) => m.dataset.done).length;
+  expect(done === 8, `[w7 missions] all 8 complete (got ${done})`);
+  expect(output.includes("30"), "[w7] 30 days of history");
+  expect(output.includes("min: 146.5"), "[w7] min");
+  expect(output.includes("max: 151.6"), "[w7] max");
+  expect(output.includes("mean: 148.92"), "[w7] mean");
+  expect(output.includes("std: 1.38"), "[w7] std");
+  expect(output.includes("biggest move: 2026-10-15 (-1.62)"), "[w7] biggest move");
+  for (let i = 1; i <= 8; i++) {
+    expect(
+      s.printedLines.some((l) => l === `Mission ${i} complete!`),
+      `[w7 missions] mission ${i} completion message`,
+    );
+  }
+
+  const sem = (src) =>
+    s
+      .runProgram(src)
+      .filter((l) => l !== "▶ run" && !/^Mission|ALL DONE|hint:|^mini-python|^write a program|^files/.test(l));
+
+  /* week 7 semantics */
+  expect(sem("print(min([3, 1, 2]))").join() === "1", "[w7] min");
+  expect(sem("print(max([3, 1, 2]))").join() === "3", "[w7] max");
+  expect(sem("print(sum([3, 1, 2]))").join() === "6", "[w7] sum");
+  expect(sem("print(sum([]))").join() === "0", "[w7] sum of empty list is 0");
+  expect(
+    sem("print(min([]))").some((l) => l.includes("min() arg is an empty sequence")),
+    "[w7] min of empty list → ValueError",
+  );
+  expect(
+    sem('print(sum("abc"))').some((l) => l.includes("TypeError")),
+    "[w7] sum of a string → TypeError",
+  );
+  expect(
+    sem(
+      'import requests\nr = requests.get("https://api.frankfurter.app/2026-09-16..2026-10-15?from=USD&to=JPY")\ndata = r.json()\nprint(data["rates"]["2026-09-16"]["JPY"])',
+    ).join() === "147.8",
+    "[w7] history: date as dict key",
+  );
+  expect(
+    sem(
+      'import requests\nr = requests.get("https://api.frankfurter.app/2026-09-16..2026-10-15?from=USD&to=JPY")\nprint(r.json()["end_date"])',
+    ).join() === "2026-10-15",
+    "[w7] history end_date",
+  );
+  expect(sem("print(9 ** 0.5)").join() === "3", "[w7] square root via ** 0.5");
+  expect(
+    sem("def f(x):\n    return f\"{x:.2f}\"\nprint(f(148.91933))").join() === "148.92",
+    "[w7] .2f formatting inside a function",
+  );
+}
+
 if (failures.length) {
   console.error(`FAIL (${failures.length}):`);
   failures.forEach((f) => console.error(" - " + f));
   process.exit(1);
 }
 console.log(
-  "PASS: python sim — weeks 3, 4, 5 (24 missions) + semantics + errors + file persistence",
+  "PASS: python sim — weeks 3-7 (40 missions) + semantics + errors + file persistence + fake internet",
 );

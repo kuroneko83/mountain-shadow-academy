@@ -297,6 +297,7 @@ export const curriculumJa: Curriculum = {
       title: "ミニプロジェクト：market-watch",
       phase: "python",
       why: "総まとめの1週間：取得スクリプトを小さくて信頼できるツールに育て、毎日使ってみましょう。反復こそ、文法が怖くなくなり自然に書けるようになる唯一の道です。",
+      guide: "market-watch",
       objectives: [
         "本物のプロジェクトのようにリポジトリを構成できる（フォルダ、README、工程の分離）。",
         "生の取得スクリプトを日次レポート生成ツールに変えられる。",

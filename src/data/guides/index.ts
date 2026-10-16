@@ -16,13 +16,16 @@ import { guideDataUz } from "./data-files.uz";
 import { guideApiEn } from "./requests-api.en";
 import { guideApiJa } from "./requests-api.ja";
 import { guideApiUz } from "./requests-api.uz";
+import { guideWatchEn } from "./market-watch.en";
+import { guideWatchJa } from "./market-watch.ja";
+import { guideWatchUz } from "./market-watch.uz";
 import type { Guide } from "../types";
 import type { Lang } from "../types";
 
 const GUIDES: Record<Lang, Guide[]> = {
-  en: [guideCommandLineEn, guideGitEn, guidePythonEn, guideLoopsEn, guideDataEn, guideApiEn],
-  ja: [guideCommandLineJa, guideGitJa, guidePythonJa, guideLoopsJa, guideDataJa, guideApiJa],
-  uz: [guideCommandLineUz, guideGitUz, guidePythonUz, guideLoopsUz, guideDataUz, guideApiUz],
+  en: [guideCommandLineEn, guideGitEn, guidePythonEn, guideLoopsEn, guideDataEn, guideApiEn, guideWatchEn],
+  ja: [guideCommandLineJa, guideGitJa, guidePythonJa, guideLoopsJa, guideDataJa, guideApiJa, guideWatchJa],
+  uz: [guideCommandLineUz, guideGitUz, guidePythonUz, guideLoopsUz, guideDataUz, guideApiUz, guideWatchUz],
 };
 
 export function getGuides(lang: Lang): Guide[] {

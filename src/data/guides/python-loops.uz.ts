@@ -161,7 +161,7 @@ export const guideLoopsUz: Guide = {
     },
     {
       id: "l3",
-      prompt: "total(values) funksiyasini yozing — roʻyxatni tsikl bilan qoʻshsin (sum() bilan hiyla — 8-haftaning mukofoti), natijani return qilsin. print(total(volumes)) — 28000.",
+      prompt: "total(values) funksiyasini yozing — roʻyxatni tsikl bilan qoʻshsin (sum() bilan hiyla — 7-haftaning mukofoti), natijani return qilsin. print(total(volumes)) — 28000.",
       hint: "Tsikldan oldin result = 0, ichida result += v, oxirida return result. print(total(volumes))",
     },
     {

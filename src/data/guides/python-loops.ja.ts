@@ -161,7 +161,7 @@ export const guideLoopsJa: Guide = {
     },
     {
       id: "l3",
-      prompt: "関数 total(values) を書く — リストをループで足し（ズルの sum() は第8週のご褒美）、結果を return。print(total(volumes)) — 28000。",
+      prompt: "関数 total(values) を書く — リストをループで足し（ズルの sum() は第7週のご褒美）、結果を return。print(total(volumes)) — 28000。",
       hint: "ループの前に result = 0、中で result += v、最後に return result。print(total(volumes))",
     },
     {

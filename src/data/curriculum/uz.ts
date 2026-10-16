@@ -297,6 +297,7 @@ export const curriculumUz: Curriculum = {
       title: "Mini-loyiha: market-watch",
       phase: "python",
       why: "Mustahkamlash haftasi: olish skriptini kichkina, ishonchli vositaga aylantiring va har kunlik ishlatib koʻring. Takrorlash — sintaksis qoʻrqinchli boʻlishni toʻxtatib, avtomatik boʻlishini taʼminlaydigan yagona yoʻl.",
+      guide: "market-watch",
       objectives: [
         "Repozitoriyani haqiqiy loyiha kabi tuzish (papkalar, README, alohida qadamlar).",
         "Xom olish skriptini kunlik hisobot generatoriga aylantirish.",

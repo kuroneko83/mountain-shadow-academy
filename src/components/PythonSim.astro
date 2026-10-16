@@ -1087,6 +1087,8 @@ const runLabel =
         if ((e.op === "/" || e.op === "//") && r === 0)
           throw new PyError("ZeroDivisionError", "division by zero");
         switch (e.op) {
+          case "-":
+            return l - r;
           case "/":
             return l / r;
           case "//":
@@ -1179,6 +1181,22 @@ const runLabel =
           const step = args.length === 3 ? (args[2] as number) : 1;
           if (step === 0) throw new PyError("ValueError", "range() arg 3 must not be zero");
           return { __range: { a, b, step } } as any;
+        }
+        if (fname === "min" || fname === "max") {
+          const a = args[0] as Val;
+          if (!Array.isArray(a) || a.length === 0)
+            throw new PyError("ValueError", `${fname}() arg is an empty sequence`);
+          if (!a.every((x) => typeof x === "number"))
+            throw new PyError("TypeError", `${fname}() needs a list of numbers`);
+          return a.reduce((m, x) => (fname === "min" ? Math.min(m, x) : Math.max(m, x)));
+        }
+        if (fname === "sum") {
+          const a = args[0] as Val;
+          if (!Array.isArray(a))
+            throw new PyError("TypeError", "sum() needs a list");
+          if (!a.every((x) => typeof x === "number"))
+            throw new PyError("TypeError", "sum() needs a list of numbers");
+          return a.reduce((acc, x) => acc + x, 0);
         }
         if (fname === "int") {
           const a = args[0] as Val;
@@ -1360,6 +1378,31 @@ const runLabel =
   /* fake internet — requests.get() against a small registry of endpoints */
   let flakyCalls = 0;
 
+  /* deterministic 30-day USD→JPY history (ends on the same 149.98 as latest) */
+  const HISTORY_START = "2026-09-16";
+  const HISTORY_RATES = [
+    147.8, 148.1, 147.9, 148.3, 148.0, 147.5, 147.2, 146.5, 146.8, 147.1,
+    147.6, 148.2, 148.5, 149.0, 149.3, 149.1, 148.8, 148.4, 148.6, 149.2,
+    149.5, 149.8, 150.2, 150.5, 151.0, 151.3, 151.1, 150.7, 151.6, 149.98,
+  ];
+
+  function historyBody(): any {
+    const rates: Record<string, any> = {};
+    const start = new Date(HISTORY_START + "T00:00:00Z");
+    HISTORY_RATES.forEach((r, i) => {
+      const d = new Date(start.getTime() + i * 86400000);
+      rates[d.toISOString().slice(0, 10)] = { JPY: r };
+    });
+    const end = new Date(start.getTime() + (HISTORY_RATES.length - 1) * 86400000);
+    return {
+      amount: 1.0,
+      base: "USD",
+      start_date: HISTORY_START,
+      end_date: end.toISOString().slice(0, 10),
+      rates,
+    };
+  }
+
   function fakeGet(url: string): any {
     const endpoints: Record<string, () => { status_code: number; body: any }> = {
       "https://api.frankfurter.app/latest?from=USD&to=JPY": () => ({
@@ -1369,6 +1412,10 @@ const runLabel =
       "https://api.frankfurter.app/latest?from=EUR&to=JPY": () => ({
         status_code: 200,
         body: { amount: 1.0, base: "EUR", date: "2026-10-15", rates: { JPY: 163.55 } },
+      }),
+      "https://api.frankfurter.app/2026-09-16..2026-10-15?from=USD&to=JPY": () => ({
+        status_code: 200,
+        body: historyBody(),
       }),
       "https://api.frankfurter.app/flaky": () => {
         flakyCalls++;
@@ -1639,6 +1686,25 @@ const runLabel =
       const c = simFiles["rates.csv"] ?? "";
       return c.includes("149.98") && c.includes("163.55");
     },
+    /* week 7: market-watch — stats over the history endpoint */
+    s1: () => lastOutput.some((l) => l === "30"),
+    s2: () =>
+      Array.isArray(env.values) &&
+      env.values.length === 30 &&
+      env.values.every((v) => typeof v === "number"),
+    s3: () =>
+      lastOutput.some((l) => l.includes("min: 146.5")) &&
+      lastOutput.some((l) => l.includes("max: 151.6")),
+    s4: () => lastOutput.some((l) => l.includes("mean: 148.92")),
+    s5: () => lastOutput.some((l) => l.includes("std: 1.38")),
+    s6: () =>
+      lastOutput.some((l) => l.includes("biggest move: 2026-10-15")) &&
+      lastOutput.some((l) => l.includes("-1.62")),
+    s7: () => {
+      const c = simFiles["report.txt"] ?? "";
+      return c.includes("min: 146.5") && c.includes("mean: 148.92");
+    },
+    s8: () => isFunc("report") && lastOutput.some((l) => l.includes("USD/JPY 30-day report")),
   };
 
   function print(text: string, cls?: string): void {
@@ -1686,7 +1752,10 @@ const runLabel =
       if (err && err.__return !== undefined)
         pyError = new PyError("SyntaxError", "'return' outside function");
       else if (err instanceof PyError) pyError = err;
-      else pyError = { message: err?.message ?? "invalid syntax" };
+      else
+        pyError = {
+          message: `${err?.constructor?.name ?? "Error"}: ${err?.message ?? String(err)}`,
+        };
     }
     runPrinted.forEach((l) => print(l));
     if (pyError) {
